@@ -1,0 +1,7 @@
+.autotools
+.cproject
+.project
+.pydevproject
+.settings/
+.vscode/
+.DS_Store
