@@ -188,11 +188,14 @@ class FlavTreeProducer(Module, object):
         # ak4 jets
         self.out.branch("n_btag", "I")
         self.out.branch("n_ctag", "I")
+        self.out.branch("n_mutag", "I")
         self.out.branch("ak4_pt", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_eta", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_phi", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_mass", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_tag", "F", 20, lenVar="n_ak4")
+        self.out.branch("ak4_mu_ptfrac", "F", 20, lenVar="n_ak4")
+        self.out.branch("ak4_mu_pdgId", "I", 20, lenVar="n_ak4")
         if self.isMC:
             self.out.branch("ak4_hflav", "I", 20, lenVar="n_ak4")
             self.out.branch("ak4_pflav", "I", 20, lenVar="n_ak4")
@@ -224,6 +227,7 @@ class FlavTreeProducer(Module, object):
     def _selectLeptons(self, event):
         # do lepton selection
         event.looseLeptons = []  # used for jet lepton cleaning & lepton counting
+        event.soft_muon_dict = {}
 
         electrons = Collection(event, "Electron")
         for el in electrons:
@@ -235,9 +239,11 @@ class FlavTreeProducer(Module, object):
                 event.looseLeptons.append(el)
 
         muons = Collection(event, "Muon")
-        for mu in muons:
+        for idx, mu in enumerate(muons):
             if mu.pt > 15 and abs(mu.eta) < 2.4 and mu.tightId and mu.pfRelIso04_all < 0.25:
                 event.looseLeptons.append(mu)
+            elif mu.pt > 5 and abs(mu.eta) < 2.4 and mu.tightId and mu.pfRelIso04_all > 0.25:
+                event.soft_muon_dict[idx] = mu
 
         event.looseLeptons.sort(key=lambda x: x.pt, reverse=True)
 
@@ -264,6 +270,13 @@ class FlavTreeProducer(Module, object):
                     event.selectedLeptons.append(lep)
             if len(event.selectedLeptons) != 1:
                 return False
+            # reject DY(-> mu mu)
+            if abs(lep.pdgId) == 13:
+                for soft_mu in event.soft_muon_dict.values():
+                    mll = sumP4(lep, soft_mu).M()
+                    if mll < 12 or (81 < mll < 101):
+                        return False
+
         elif self._channel in ('ZJets', 'TT2L'):
             if len(event.looseLeptons) != 2:
                 return False
@@ -330,6 +343,13 @@ class FlavTreeProducer(Module, object):
                 j.tag = self.evalJetTag(j)
             else:
                 j.tag = 0
+
+            # attach soft muon to jet
+            muons_in_jet = [event.soft_muon_dict[i] for i in (j.muonIdx1, j.muonIdx2) if i in event.soft_muon_dict]
+            if len(muons_in_jet):
+                j.mu = max(muons_in_jet, key=lambda x: x.pt)
+            else:
+                j.mu = None
             event.ak4jets.append(j)
 
         event.ak4_b_jets = []
@@ -508,6 +528,8 @@ class FlavTreeProducer(Module, object):
         ak4_phi = []
         ak4_mass = []
         ak4_tag = []
+        ak4_mu_ptfrac = []
+        ak4_mu_pdgId = []
         ak4_hflav = []
         ak4_pflav = []
         # ak4_bdisc = []
@@ -522,6 +544,8 @@ class FlavTreeProducer(Module, object):
             ak4_phi.append(j.phi)
             ak4_mass.append(j.mass)
             ak4_tag.append(j.tag)
+            ak4_mu_ptfrac.append(j.mu.pt / j.pt if j.mu else 0)
+            ak4_mu_pdgId.append(j.mu.pdgId if j.mu else 0)
             if self.isMC:
                 ak4_hflav.append(j.hadronFlavour)
                 ak4_pflav.append(j.partonFlavour)
@@ -538,9 +562,13 @@ class FlavTreeProducer(Module, object):
         self.out.fillBranch("ak4_phi", ak4_phi)
         self.out.fillBranch("ak4_mass", ak4_mass)
         self.out.fillBranch("ak4_tag", ak4_tag)
+        self.out.fillBranch("ak4_mu_ptfrac", ak4_mu_ptfrac)
+        self.out.fillBranch("ak4_mu_pdgId", ak4_mu_pdgId)
         if self.isMC:
             self.out.fillBranch("ak4_hflav", ak4_hflav)
             self.out.fillBranch("ak4_pflav", ak4_pflav)
+
+        self.out.fillBranch("n_mutag", sum(0 < x < 0.5 for x in ak4_mu_ptfrac))
 
         # self.out.fillBranch("ak4_bdisc", ak4_bdisc)
         # self.out.fillBranch("ak4_cvbdisc", ak4_cvbdisc)
