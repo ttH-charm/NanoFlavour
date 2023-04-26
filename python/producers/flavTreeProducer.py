@@ -167,6 +167,8 @@ class FlavTreeProducer(Module, object):
         self.out.branch("lep1_eta", "F")
         self.out.branch("lep1_phi", "F")
         self.out.branch("lep1_mass", "F")
+        self.out.branch("lep1_pfIso", "F")
+        self.out.branch("lep1_miniIso", "F")
         self.out.branch("lep1_pdgId", "I")
 
         if self._channel in ('ZJets', 'TT2L'):
@@ -184,6 +186,7 @@ class FlavTreeProducer(Module, object):
             self.out.branch("min_deta_lep_ak4", "F")
         elif self._channel in ('ZJets', 'TT2L'):
             self.out.branch("deltaR_ll", "F")
+            self.out.branch("mt_ll_met", "F")
 
         # ak4 jets
         self.out.branch("n_btag", "I")
@@ -193,12 +196,14 @@ class FlavTreeProducer(Module, object):
         self.out.branch("ak4_eta", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_phi", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_mass", "F", 20, lenVar="n_ak4")
-        self.out.branch("ak4_tag", "F", 20, lenVar="n_ak4")
+        self.out.branch("ak4_tag", "I", 20, lenVar="n_ak4")
+        self.out.branch("ak4_puId", "I", 20, lenVar="n_ak4")
         self.out.branch("ak4_mu_ptfrac", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_mu_pdgId", "I", 20, lenVar="n_ak4")
         if self.isMC:
             self.out.branch("ak4_hflav", "I", 20, lenVar="n_ak4")
             self.out.branch("ak4_pflav", "I", 20, lenVar="n_ak4")
+            self.out.branch("ak4_genmatch", "I", 20, lenVar="n_ak4")
 
         # self.out.branch("ak4_bdisc", "F", 20, lenVar="n_ak4")
         # self.out.branch("ak4_cvbdisc", "F", 20, lenVar="n_ak4")
@@ -248,7 +253,7 @@ class FlavTreeProducer(Module, object):
         event.looseLeptons.sort(key=lambda x: x.pt, reverse=True)
 
     def _preSelect(self, event):
-        event.selectedLeptons = []  # used for reconstructing the top quarks
+        event.selectedLeptons = []  # used for reconstructing the W/Z boson / top quarks
         if self._channel in ('WJets', 'TT1L'):
             if len(event.looseLeptons) != 1:
                 return False
@@ -377,8 +382,8 @@ class FlavTreeProducer(Module, object):
             if not (1 <= len(event.ak4jets) <= 2):
                 return False
         elif self._channel == 'WJets':
-            # 1 <= njets <= 2
-            if not (1 <= len(event.ak4jets) <= 2):
+            # 1 <= njets <= 1
+            if not (len(event.ak4jets) == 1):
                 return False
             if event.met.pt < 20:
                 return False
@@ -500,6 +505,9 @@ class FlavTreeProducer(Module, object):
         self.out.fillBranch("lep1_eta", event.selectedLeptons[0].eta)
         self.out.fillBranch("lep1_phi", event.selectedLeptons[0].phi)
         self.out.fillBranch("lep1_mass", event.selectedLeptons[0].mass)
+        self.out.fillBranch("lep1_pfIso", event.selectedLeptons[0].pfRelIso04_all if abs(
+            event.selectedLeptons[0].pdgId) == 13 else event.selectedLeptons[0].pfRelIso03_all)
+        self.out.fillBranch("lep1_miniIso", event.selectedLeptons[0].miniPFRelIso_all)
         self.out.fillBranch("lep1_pdgId", event.selectedLeptons[0].pdgId)
 
         if self._channel in ('ZJets', 'TT2L'):
@@ -516,8 +524,9 @@ class FlavTreeProducer(Module, object):
             self.out.fillBranch("mt_lep_met", transverseMass(lep, event.met))
             self.out.fillBranch("min_dr_lep_ak4", minValue([deltaR(lep, j) for j in event.ak4jets]))
             self.out.fillBranch("min_deta_lep_ak4", minValue([abs(lep.eta - j.eta) for j in event.ak4jets]))
-        elif self._channel == ('ZJets', 'TT2L'):
+        elif self._channel in ('ZJets', 'TT2L'):
             self.out.fillBranch("deltaR_ll", deltaR(event.selectedLeptons[0], event.selectedLeptons[1]))
+            self.out.fillBranch("mt_ll_met", transverseMass(event.Vboson, event.met))
 
         # AK4 jets, cleaned vs leptons
         self.out.fillBranch("n_btag", len(event.ak4_b_jets))
@@ -528,10 +537,12 @@ class FlavTreeProducer(Module, object):
         ak4_phi = []
         ak4_mass = []
         ak4_tag = []
+        ak4_puId = []
         ak4_mu_ptfrac = []
         ak4_mu_pdgId = []
         ak4_hflav = []
         ak4_pflav = []
+        ak4_genmatch = []
         # ak4_bdisc = []
         # ak4_cvbdisc = []
         # ak4_cvldisc = []
@@ -544,11 +555,13 @@ class FlavTreeProducer(Module, object):
             ak4_phi.append(j.phi)
             ak4_mass.append(j.mass)
             ak4_tag.append(j.tag)
+            ak4_puId.append(j.puId)
             ak4_mu_ptfrac.append(j.mu.pt / j.pt if j.mu else 0)
             ak4_mu_pdgId.append(j.mu.pdgId if j.mu else 0)
             if self.isMC:
                 ak4_hflav.append(j.hadronFlavour)
                 ak4_pflav.append(j.partonFlavour)
+                ak4_genmatch.append(j.genJetIdx >= 0)
 
             # ak4_bdisc.append(j.btagDeepFlavB)
             # ak4_cvbdisc.append(j.btagDeepFlavCvB)
@@ -562,11 +575,13 @@ class FlavTreeProducer(Module, object):
         self.out.fillBranch("ak4_phi", ak4_phi)
         self.out.fillBranch("ak4_mass", ak4_mass)
         self.out.fillBranch("ak4_tag", ak4_tag)
+        self.out.fillBranch("ak4_puId", ak4_puId)
         self.out.fillBranch("ak4_mu_ptfrac", ak4_mu_ptfrac)
         self.out.fillBranch("ak4_mu_pdgId", ak4_mu_pdgId)
         if self.isMC:
             self.out.fillBranch("ak4_hflav", ak4_hflav)
             self.out.fillBranch("ak4_pflav", ak4_pflav)
+            self.out.fillBranch("ak4_genmatch", ak4_genmatch)
 
         self.out.fillBranch("n_mutag", sum(0 < x < 0.5 for x in ak4_mu_ptfrac))
 
