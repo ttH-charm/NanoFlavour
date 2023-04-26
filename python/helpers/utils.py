@@ -96,8 +96,12 @@ def corrected_svmass(sv):
 
 
 def transverseMass(obj, met):
-    cos_dphi = math.cos(deltaPhi(obj, met))
-    return math.sqrt(2 * obj.pt * met.pt * (1 - cos_dphi))
+    try:
+        cos_dphi = math.cos(deltaPhi(obj, met))
+        return math.sqrt(2 * obj.pt * met.pt * (1 - cos_dphi))
+    except TypeError:
+        cos_dphi = math.cos(deltaPhi(obj.phi(), met.phi))
+        return math.sqrt(2 * obj.pt() * met.pt * (1 - cos_dphi))
 
 
 def minValue(collection, fallback=99):
