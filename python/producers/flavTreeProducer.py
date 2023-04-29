@@ -95,10 +95,9 @@ class FlavTreeProducer(Module, object):
             }
 
         # https://twiki.cern.ch/twiki/bin/view/CMS/PileupJetIDUL
-        # NOTE [28.10.2022]: switched to loose PU ID to avoid discontinuity in jet pT distributions
-        self.puID_WP = {2015: 1, 2016: 1, 2017: 4, 2018: 4}[self._year]  # L
+        # self.puID_WP = {2015: 1, 2016: 1, 2017: 4, 2018: 4}[self._year]  # L
         # self.puID_WP = {2015: 3, 2016: 3, 2017: 6, 2018: 6}[self._year]  # M
-        # self.puID_WP = {2015: 7, 2016: 7, 2017: 7, 2018: 7}[self._year]  # T
+        self.puID_WP = {2015: 7, 2016: 7, 2017: 7, 2018: 7}[self._year]  # T
 
         logger.info('Running %s channel for year %s with jet tagging WPs %s, jet PU ID WPs %s',
                     self._channel, str(self._year), str(self.jetTagWPs), str(self.puID_WP))
@@ -385,7 +384,9 @@ class FlavTreeProducer(Module, object):
             # 1 <= njets <= 1
             if not (len(event.ak4jets) == 1):
                 return False
-            if event.met.pt < 20:
+            if event.met.pt < 50:
+                return False
+            if transverseMass(event.selectedLeptons[0], event.met) < 50:
                 return False
         elif self._channel == 'TT1L':
             # 3 <= njets <= 4
