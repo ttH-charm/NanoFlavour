@@ -5,6 +5,7 @@ dropmatch n?PFCands_.+
 dropmatch Jet_(b|c)Reg(Corr|res)
 drop Jet_*EF
 keep Jet_*EmEF
+keep Jet_muEF
 
 # objects
 dropmatch n?boostedTau_.+
