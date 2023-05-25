@@ -198,6 +198,7 @@ class FlavTreeProducer(Module, object):
         self.out.branch("ak4_tag", "I", 20, lenVar="n_ak4")
         self.out.branch("ak4_puId", "I", 20, lenVar="n_ak4")
         self.out.branch("ak4_mu_ptfrac", "F", 20, lenVar="n_ak4")
+        self.out.branch("ak4_mu_plus_nem", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_mu_pdgId", "I", 20, lenVar="n_ak4")
         if self.isMC:
             self.out.branch("ak4_hflav", "I", 20, lenVar="n_ak4")
@@ -540,6 +541,7 @@ class FlavTreeProducer(Module, object):
         ak4_tag = []
         ak4_puId = []
         ak4_mu_ptfrac = []
+        ak4_mu_plus_nem = []
         ak4_mu_pdgId = []
         ak4_hflav = []
         ak4_pflav = []
@@ -558,6 +560,7 @@ class FlavTreeProducer(Module, object):
             ak4_tag.append(j.tag)
             ak4_puId.append(j.puId)
             ak4_mu_ptfrac.append(j.mu.pt / j.pt if j.mu else 0)
+            ak4_mu_plus_nem.append(j.muEF + j.neEmEF)
             ak4_mu_pdgId.append(j.mu.pdgId if j.mu else 0)
             if self.isMC:
                 ak4_hflav.append(j.hadronFlavour)
@@ -578,6 +581,7 @@ class FlavTreeProducer(Module, object):
         self.out.fillBranch("ak4_tag", ak4_tag)
         self.out.fillBranch("ak4_puId", ak4_puId)
         self.out.fillBranch("ak4_mu_ptfrac", ak4_mu_ptfrac)
+        self.out.fillBranch("ak4_mu_plus_nem", ak4_mu_plus_nem)
         self.out.fillBranch("ak4_mu_pdgId", ak4_mu_pdgId)
         if self.isMC:
             self.out.fillBranch("ak4_hflav", ak4_hflav)
