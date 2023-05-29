@@ -238,9 +238,9 @@ class FlavTreeProducer(Module, object):
         for el in electrons:
             el.etaSC = el.eta + el.deltaEtaSC
             # ttH(bb) analysis uses tight electron ID
-            # if el.pt > 15 and abs(el.eta) < 2.4 and el.cutBased == 4:
-            # NOTE: try mvaFall17V2Iso_WP90
-            if el.pt > 15 and abs(el.eta) < 2.4 and el.mvaFall17V2Iso_WP90:
+            if el.pt > 15 and abs(el.eta) < 2.4 and el.cutBased >= 2:
+                # NOTE: try mvaFall17V2Iso_WP90
+                # if el.pt > 15 and abs(el.eta) < 2.4 and el.mvaFall17V2Iso_WP90:
                 event.looseLeptons.append(el)
 
         muons = Collection(event, "Muon")
@@ -268,9 +268,9 @@ class FlavTreeProducer(Module, object):
                 # ele (29/30/30 GeV)
                 ePtCut = 30 if self._year in (2017, 2018) else 29
                 # ttH(bb) analysis uses tight electron ID
-                # if lep.pt > ePtCut and lep.cutBased == 4:
-                # NOTE: try mvaFall17V2Iso_WP80
-                if lep.pt > ePtCut and lep.mvaFall17V2Iso_WP80:
+                if lep.pt > ePtCut and lep.cutBased >= 4:
+                    # NOTE: try mvaFall17V2Iso_WP80
+                    # if lep.pt > ePtCut and lep.mvaFall17V2Iso_WP80:
                     # self.eleCorr.correct(event, lep, self.isMC)
                     event.selectedLeptons.append(lep)
             if len(event.selectedLeptons) != 1:

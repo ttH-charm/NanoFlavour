@@ -34,18 +34,18 @@ def _base_cut(year, channel):
     # FIXME: why not using ``Electron_mvaFall17V2Iso_WP90'' for 2L? ~40% gain in signal eff.
     cut_dict = {
         # ttH(bb) analysis uses tight electron ID
-        # 'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_cutBased==4',
-        'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_mvaFall17V2Iso_WP90',
+        'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_cutBased>=2',
+        # 'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_mvaFall17V2Iso_WP90',
         'mu_cut': 'Muon_pt>15 && abs(Muon_eta)<2.4 && Muon_tightId && Muon_pfRelIso04_all<0.25',
         'jet_count': 'Sum$(Jet_pt>15 && abs(Jet_eta)<2.4 && (Jet_jetId & 4))',
     }
     basesels = {
         # 1L: *one and only one* e/mu w/ pT > 15, but *at least one* e/mu w/ pT above a (year-dependent) higher threshold (here put the lowest of the three years)
         'WJets': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 1 && '
-                 '(Sum$(Electron_pt>29 && Electron_mvaFall17V2Iso_WP80 && {ele_cut}) + Sum$(Muon_pt>26 && Muon_pfRelIso04_all<0.15 && {mu_cut})) >= 1 && '
+                 '(Sum$(Electron_pt>29 && Electron_cutBased>=4 && {ele_cut}) + Sum$(Muon_pt>26 && Muon_pfRelIso04_all<0.15 && {mu_cut})) >= 1 && '
                  '{jet_count}>=1',
         'TT1L': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 1 && '
-                 '(Sum$(Electron_pt>29 && Electron_mvaFall17V2Iso_WP80 && {ele_cut}) + Sum$(Muon_pt>26 && Muon_pfRelIso04_all<0.15 && {mu_cut})) >= 1 && '
+                 '(Sum$(Electron_pt>29 && Electron_cutBased>=4 && {ele_cut}) + Sum$(Muon_pt>26 && Muon_pfRelIso04_all<0.15 && {mu_cut})) >= 1 && '
                  '{jet_count}>=1',
         # 2L: exactly 2 e/mu w/ pT > 15
         'ZJets': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 2 && '
