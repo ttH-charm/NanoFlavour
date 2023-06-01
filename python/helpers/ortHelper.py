@@ -66,3 +66,23 @@ class ONNXRuntimeHelper:
             outputs = np.stack(outputs, axis=0).mean(axis=0)
         outputs = {n: v for n, v in zip(self.output_names, outputs)}
         return outputs
+
+class ONNXRuntimeHelperSV:
+
+    def __init__(self, preprocess_file, model_file, output_prefix='score'):
+        self.preprocessor = Preprocessor(preprocess_file)
+        options = onnxruntime.SessionOptions()
+        options.inter_op_num_threads = 1
+        options.intra_op_num_threads = 1
+        options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        self.session =onnxruntime.InferenceSession(model_file, sess_options=options,
+                                                   providers=['CPUExecutionProvider'])
+        self.output_names = [output_prefix + '_' + n for n in self.preprocessor.prep_params['output_names']]
+        print('Loaded ONNX models (for SV inference):\n  %s\npreprocess file:\n  %s' % ('\n  '.join(model_file), str(preprocess_file)))
+
+    def predict(self, inputs):
+        data = self.preprocessor.preprocess(inputs)
+        output = self.session.run([], data)[0][0]
+        outputs = {n: v for n, v in zip(self.output_names, output)}
+        return outputs
+

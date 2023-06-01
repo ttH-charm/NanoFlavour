@@ -1,0 +1,62 @@
+# PFCands
+# dropmatch n?PFCands_.+
+
+# AK4 jets
+dropmatch Jet_(b|c)Reg(Corr|res)
+drop Jet_*EF
+keep Jet_*EmEF
+
+# objects
+dropmatch n?boostedTau_.+
+dropmatch n?Tau_.+
+dropmatch n?SoftActivity.+
+dropmatch n?FsrPhoton_.+
+dropmatch n?IsoTrack_.+
+dropmatch n?btagWeight_.+
+
+# HLT
+drop HLT*
+keep HLT_Iso*Mu24
+keep HLT_IsoMu24_eta2p1
+keep HLT_IsoMu27
+keep HLT_Ele27_WPTight_Gsf
+keep HLT_Ele28_eta2p1_WPTight_Gsf_HT150
+keep HLT_Ele32_WPTight_Gsf
+keep HLT_Ele32_WPTight_Gsf_L1DoubleEG
+keep HLT_Ele35_WPTight_Gsf
+keep HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL
+keep HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ
+keep HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL
+keep HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ
+keep HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
+keep HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ
+keep HLT_Mu12_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ
+keep HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL
+# keep HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL
+keep HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ
+# keep HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ
+keep HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8
+keep HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8
+keep HLT_PFMET*_PFMHT*_IDTight*
+keep HLT_Photon175
+keep HLT_Photon200
+keep HLT_PFJet450
+keep HLT_*HT*CSV*
+keepmatch HLT_PFHT[0-9]+
+
+# L1/TrigObj
+dropmatch n?L1_.+
+dropmatch n?TrigObj_.+
+
+# GEN
+dropmatch n?GenDressedLepton_.+
+dropmatch n?GenVisTau_.+
+dropmatch n?LHEPart_.+
+dropmatch n?Generator_.+
+dropmatch n?LHEReweightingWeight
+dropmatch n?HTXS_.+
+dropmatch n?GenIsolatedPhoton_.+
+dropmatch n?PuppiMET_.+
+dropmatch n?CaloMET_.+
+dropmatch n?ChsMET_.+
+dropmatch n?RawPuppiMET_.+
