@@ -109,7 +109,7 @@ class ZjetsTreeProducer(Module, object):
                      str(self._year), str(self.jetTagWPs), str(self.puID_WP))
         
         if self._opts['eval_nn']:
-            prefix = os.path.expandvars('$CMSSW_BASE/src/PhysicsTools/NanoJetFlavourCalibration/data')
+            prefix = os.path.expandvars('$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data')
             self.nn_helper = ONNXRuntimeHelperSV(
                  preprocess_file = '%s/sv/preprocess.json' % prefix,
                  model_file='%s/sv/model_pn.onnx' % prefix)
