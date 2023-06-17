@@ -444,9 +444,9 @@ class FlavTreeProducer(Module, object):
             self.out.fillBranch("passTrig2L_extEl", passTrigger(event, 'HLT_Ele27_WPTight_Gsf'))
             self.out.fillBranch("passTrig2L_extMu", passTrigger(event, ['HLT_IsoMu24', 'HLT_IsoTkMu24']))
         elif self._year == 2017:
-            # FIXME: single-e trig needs update, see https://indico.cern.ch/event/961185/contributions/4113610/attachments/2148103/3625626/ttHbb_FullRun2_Preapproval.pdf slide 47
+            # NOTE: switched to HLT_Ele35_WPTight_Gsf for single electron trigger
             self.out.fillBranch("passTrigEl", passTrigger(
-                event, ['HLT_Ele32_WPTight_Gsf_L1DoubleEG', 'HLT_Ele28_eta2p1_WPTight_Gsf_HT150']))
+                event, ['HLT_Ele35_WPTight_Gsf', 'HLT_Ele28_eta2p1_WPTight_Gsf_HT150']))
             self.out.fillBranch("passTrigMu", passTrigger(event, 'HLT_IsoMu27'))
             self.out.fillBranch("passTrigElEl", passTrigger(event, ['HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL',
                                                                     'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ']))
