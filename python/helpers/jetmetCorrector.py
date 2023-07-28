@@ -101,7 +101,7 @@ class JetMETCorrector(object):
         self.jer = jer
         self.jmr = jmr
         self.met_unclustered = met_unclustered
-        self.correctMET = (jetType == 'AK4PFchs')  # FIXME
+        self.correctMET = (jetType == 'AK4PFchs' or jetType == 'AK4PFPuppi')  # FIXME
         self.smearMET = smearMET
         self.applyHEMUnc = applyHEMUnc
 
@@ -274,7 +274,7 @@ class JetMETCorrector(object):
                     j.pt = j.rawP4.pt() * j._jecFactor
                     j.mass = j.rawP4.mass() * j._jecFactor
                 if met is not None:
-                    j._jecFactorL1 = jetCorrector.getCorrection(j, rho, 'L1FastJet')
+                    j._jecFactorL1 = 1. if 'Puppi' in self.jetType else jetCorrector.getCorrection(j, rho, 'L1FastJet')
 
             # set JER factor
             j._smearFactorNominal = 1

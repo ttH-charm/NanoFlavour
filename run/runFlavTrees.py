@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(m
 
 flav_cfgname = 'flavTree_cfg.json'
 default_config = {'channel': None,
+                  'jetType': 'Puppi',
                   'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': 'RegroupedV2_',
                   'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
                   'smearMET': False}
@@ -39,6 +40,8 @@ def _base_cut(year, channel):
         'mu_cut': 'Muon_pt>15 && abs(Muon_eta)<2.4 && Muon_tightId && Muon_pfRelIso04_all<0.25',
         'jet_count': 'Sum$(Jet_pt>15 && abs(Jet_eta)<2.4 && (Jet_jetId & 4))',
     }
+    if default_config['jetType'] == 'Puppi':
+        cut_dict['jet_count'] = cut_dict['jet_count'].replace('Jet_', 'JetPuppi_')
     basesels = {
         # 1L: *one and only one* e/mu w/ pT > 15, but *at least one* e/mu w/ pT above a (year-dependent) higher threshold (here put the lowest of the three years)
         'WJets': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 1 && '

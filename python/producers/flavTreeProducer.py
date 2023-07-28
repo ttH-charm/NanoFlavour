@@ -35,6 +35,7 @@ class FlavTreeProducer(Module, object):
         self._channel = channel
         self._chn_code = channel_dict[channel]
         self._year = int(kwargs['year'])
+        self._jetType = 'JetPuppi' if kwargs['jetType'] == 'Puppi' else 'Jet'
         self._jmeSysts = {'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': '',
                           'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
                           'smearMET': False}
@@ -52,7 +53,8 @@ class FlavTreeProducer(Module, object):
                     self._channel, str(self._year), str(self._jmeSysts), str(self._opts))
 
         if self._needsJMECorr:
-            self.jetmetCorr = JetMETCorrector(year=self._year, jetType="AK4PFchs", **self._jmeSysts)
+            self.jetmetCorr = JetMETCorrector(
+                year=self._year, jetType="AK4PFPuppi" if self._jetType == 'JetPuppi' else "AK4PFchs", **self._jmeSysts)
 
         # self.eleCorr = ElectronScaleResCorrector(year=self._year, corr=self._opts['ele_scale'])
         # self.muonCorr = MuonScaleResCorrector(
@@ -118,7 +120,7 @@ class FlavTreeProducer(Module, object):
     def beginFile(self, inputFile, outputFile, inputTree, wrappedOutputTree):
         self.isMC = bool(inputTree.GetBranch('genWeight'))
         self.hasParticleNetAK4 = 'privateNano' if inputTree.GetBranch(
-            'Jet_ParticleNetAK4_probb') else 'jmeNano' if inputTree.GetBranch('Jet_particleNetAK4_B') else None
+            self._jetType + '_ParticleNetAK4_probb') else 'jmeNano' if inputTree.GetBranch(self._jetType + '_particleNetAK4_B') else None
         if not self.hasParticleNetAK4:
             raise RuntimeError('No ParticleNetAK4 scores in the input NanoAOD!')
         self.rho_branch_name = 'Rho_fixedGridRhoFastjetAll' if bool(
@@ -222,11 +224,16 @@ class FlavTreeProducer(Module, object):
             rho = getattr(event, self.rho_branch_name)
             # correct AK4 jets and MET
             self.jetmetCorr.setSeed(rndSeed(event, event._allJets))
-            self.jetmetCorr.correctJetAndMET(jets=event._allJets, lowPtJets=Collection(event, "CorrT1METJet"),
-                                             met=event.met, rawMET=METObject(event, "RawMET"),
-                                             defaultMET=METObject(event, "MET"),
-                                             rho=rho, genjets=Collection(event, 'GenJet') if self.isMC else None,
-                                             isMC=self.isMC, runNumber=event.run)
+            self.jetmetCorr.correctJetAndMET(
+                jets=event._allJets,
+                lowPtJets=[] if self._jetType == 'JetPuppi' else Collection(event, "CorrT1METJet"),
+                met=event.met,
+                rawMET=METObject(event, "RawPuppiMET") if self._jetType == 'JetPuppi' else METObject(event, "RawMET"),
+                defaultMET=METObject(event, "PuppiMET") if self._jetType == 'JetPuppi' else METObject(event, "MET"),
+                rho=rho,
+                genjets=Collection(event, 'GenJet') if self.isMC else None,
+                isMC=self.isMC,
+                runNumber=event.run)
             event._allJets = sorted(event._allJets, key=lambda x: x.pt, reverse=True)  # sort by pt after updating
 
     def _selectLeptons(self, event):
@@ -317,7 +324,8 @@ class FlavTreeProducer(Module, object):
     def _cleanObjects(self, event):
         event.ak4jets = []
         for j in event._allJets:
-            if not (j.pt > 25 and abs(j.eta) < 2.4 and (j.jetId & 4) and (j.pt > 50 or j.puId >= self.puID_WP)):
+            if not (j.pt > 25 and abs(j.eta) < 2.4 and (j.jetId & 4) and (
+                    self._jetType == 'JetPuppi' or j.pt > 50 or j.puId >= self.puID_WP)):
                 # NOTE: ttH(bb) uses jets w/ pT > 30 GeV, loose PU Id
                 # pt, eta, tightIdLepVeto, loose PU ID
                 continue
@@ -350,7 +358,11 @@ class FlavTreeProducer(Module, object):
                 j.tag = 0
 
             # attach soft muon to jet
-            muons_in_jet = [event.soft_muon_dict[i] for i in (j.muonIdx1, j.muonIdx2) if i in event.soft_muon_dict]
+            if self._jetType == 'JetPuppi':
+                # FIXME
+                muons_in_jet = [mu for mu in event.soft_muon_dict.values() if deltaR(mu, j) < 0.3]
+            else:
+                muons_in_jet = [event.soft_muon_dict[i] for i in (j.muonIdx1, j.muonIdx2) if i in event.soft_muon_dict]
             if len(muons_in_jet):
                 j.mu = max(muons_in_jet, key=lambda x: x.pt)
             else:
@@ -558,7 +570,7 @@ class FlavTreeProducer(Module, object):
             ak4_phi.append(j.phi)
             ak4_mass.append(j.mass)
             ak4_tag.append(j.tag)
-            ak4_puId.append(j.puId)
+            ak4_puId.append(0 if self._jetType == 'JetPuppi' else j.puId)
             ak4_mu_ptfrac.append(j.mu.pt / j.pt if j.mu else 0)
             ak4_mu_plus_nem.append(j.muEF + j.neEmEF)
             ak4_mu_pdgId.append(j.mu.pdgId if j.mu else 0)
@@ -603,8 +615,12 @@ class FlavTreeProducer(Module, object):
         """process event, return True (go to next module) or False (fail, go to next event)"""
 
         event.idx = event._entry if event._tree._entrylist is None else event._tree._entrylist.GetEntry(event._entry)
-        event._allJets = Collection(event, "Jet")
-        event.met = METObject(event, "MET")
+        event._allJets = Collection(event, self._jetType)
+        # FIXME!!!
+        if self._jetType == 'JetPuppi':
+            for j in event._allJets:
+                j.muonSubtrFactor = 0
+        event.met = METObject(event, "PuppiMET") if self._jetType == 'JetPuppi' else METObject(event, "MET")
 
         self._selectLeptons(event)
         if self._preSelect(event) is False:
