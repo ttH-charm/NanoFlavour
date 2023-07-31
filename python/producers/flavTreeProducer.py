@@ -183,6 +183,7 @@ class FlavTreeProducer(Module, object):
             self.out.branch("mt_lep_met", "F")
             self.out.branch("min_dr_lep_ak4", "F")
             self.out.branch("min_deta_lep_ak4", "F")
+            self.out.branch("min_dphi_lep_ak4", "F")
         elif self._channel in ('ZJets', 'TT2L'):
             self.out.branch("deltaR_ll", "F")
             self.out.branch("mt_ll_met", "F")
@@ -382,8 +383,8 @@ class FlavTreeProducer(Module, object):
             if not (1 <= len(event.ak4jets) <= 2):
                 return False
         elif self._channel == 'WJets':
-            # 1 <= njets <= 1
-            if not (len(event.ak4jets) == 1):
+            # 1 <= njets <= 2
+            if not (1 <= len(event.ak4jets) <= 2):
                 return False
             if event.met.pt < 50:
                 return False
@@ -526,6 +527,7 @@ class FlavTreeProducer(Module, object):
             self.out.fillBranch("mt_lep_met", transverseMass(lep, event.met))
             self.out.fillBranch("min_dr_lep_ak4", minValue([deltaR(lep, j) for j in event.ak4jets]))
             self.out.fillBranch("min_deta_lep_ak4", minValue([abs(lep.eta - j.eta) for j in event.ak4jets]))
+            self.out.fillBranch("min_dphi_lep_ak4", minValue([abs(deltaPhi(lep, j)) for j in event.ak4jets]))
         elif self._channel in ('ZJets', 'TT2L'):
             self.out.fillBranch("deltaR_ll", deltaR(event.selectedLeptons[0], event.selectedLeptons[1]))
             self.out.fillBranch("mt_ll_met", transverseMass(event.Vboson, event.met))
