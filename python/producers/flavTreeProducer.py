@@ -170,6 +170,13 @@ class FlavTreeProducer(Module, object):
         self.out.branch("lep1_miniIso", "F")
         self.out.branch("lep1_pdgId", "I")
 
+        self.out.branch("lep1_dxy", "F")
+        self.out.branch("lep1_dxyErr", "F")
+        self.out.branch("lep1_dz", "F")
+        self.out.branch("lep1_dzErr", "F")
+        self.out.branch("lep1_ip3d", "F")
+        self.out.branch("lep1_sip3d", "F")
+
         if self._channel in ('ZJets', 'TT2L'):
             self.out.branch("lep2_pt", "F")
             self.out.branch("lep2_eta", "F")
@@ -512,6 +519,13 @@ class FlavTreeProducer(Module, object):
             event.selectedLeptons[0].pdgId) == 13 else event.selectedLeptons[0].pfRelIso03_all)
         self.out.fillBranch("lep1_miniIso", event.selectedLeptons[0].miniPFRelIso_all)
         self.out.fillBranch("lep1_pdgId", event.selectedLeptons[0].pdgId)
+
+        self.out.fillBranch("lep1_dxy", event.selectedLeptons[0].dxy)
+        self.out.fillBranch("lep1_dxyErr", event.selectedLeptons[0].dxyErr)
+        self.out.fillBranch("lep1_dz", event.selectedLeptons[0].dz)
+        self.out.fillBranch("lep1_dzErr", event.selectedLeptons[0].dzErr)
+        self.out.fillBranch("lep1_ip3d", event.selectedLeptons[0].ip3d)
+        self.out.fillBranch("lep1_sip3d", event.selectedLeptons[0].sip3d)
 
         if self._channel in ('ZJets', 'TT2L'):
             self.out.fillBranch("lep2_pt", event.selectedLeptons[1].pt)
