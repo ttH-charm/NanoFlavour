@@ -24,6 +24,28 @@ def natural_sort(l):
     return sorted(l, key=alphanum_key)
 
 
+def check_grid_proxy(verbose=False, retry=3):
+    import subprocess
+    retry_count = 0
+    while True:
+        retry_count += 1
+        if retry_count > retry:
+            raise RuntimeError('Failed to set up valid grid proxy')
+        p = subprocess.Popen('voms-proxy-info -exists', shell=True)
+        p.communicate()
+        if p.returncode == 0:
+            if verbose:
+                logging.info('Grid proxy is valid:')
+                p = subprocess.Popen('voms-proxy-info', shell=True)
+                p.communicate()
+            break
+        else:
+            if verbose:
+                logging.info('No valid grid proxy, will run `voms-proxy-init -rfc -voms cms -valid 192:00`.')
+            p = subprocess.Popen('voms-proxy-init -rfc -voms cms -valid 192:00', shell=True)
+            p.communicate()
+
+
 def sname(sample_or_dataset_name):
     if sample_or_dataset_name[0] == '/':
         return sample_or_dataset_name.split('/')[1]
@@ -790,6 +812,7 @@ def run(args, configs=None):
     if args.submittype == 'interactive':
         run_all(args, configs)
     elif args.submittype == 'condor':
+        check_grid_proxy(verbose=True)
         submit(args, configs)
 
 
