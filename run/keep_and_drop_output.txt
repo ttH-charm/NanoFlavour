@@ -33,6 +33,10 @@ keep PV_npvs
 # genweight
 keep genWeight
 keep LHE_Vpt
+keep LHE_HT
+keep LHE_Njets
+keep LHE_NpNLO
+keep nGenJet
 keep genTtbarId
 # muR/muF scale weights
 keep *LHEScaleWeight
