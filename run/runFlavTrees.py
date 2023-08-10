@@ -74,9 +74,9 @@ def _process(args):
     args.imports = [('PhysicsTools.NanoFlavour.producers.flavTreeProducer', 'flavTreeFromConfig')]
     if args.type != 'data':
         args.imports.extend([
-            # ('PhysicsTools.NanoFlavour.producers.leptonSFProducerV2',
-            # 'electronSF_{year}_{chn},muonSF_{year}_{chn}'.format(year=year, chn=channel)),
-            # ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),
+            ('PhysicsTools.NanoFlavour.producers.leptonSFProducer',
+             'electronSF_{year},muonSF_{year}'.format(year=year)),
+            ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),
             ('PhysicsTools.NanoFlavour.producers.topPtWeightProducer', 'topPtWeight'),
             ('PhysicsTools.NanoAODTools.postprocessing.modules.common.puWeightProducer',
              'puWeight_UL2016' if year == '2015' else 'puWeight_UL%s' % year),

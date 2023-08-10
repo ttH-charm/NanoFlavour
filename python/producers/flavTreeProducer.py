@@ -95,6 +95,7 @@ class FlavTreeProducer(Module, object):
             }
 
         # https://twiki.cern.ch/twiki/bin/view/CMS/PileupJetIDUL
+        # self.puID_WP = {2015: -1, 2016: -1, 2017: -1, 2018: -1}[self._year]  # None
         # self.puID_WP = {2015: 1, 2016: 1, 2017: 4, 2018: 4}[self._year]  # L
         # self.puID_WP = {2015: 3, 2016: 3, 2017: 6, 2018: 6}[self._year]  # M
         self.puID_WP = {2015: 7, 2016: 7, 2017: 7, 2018: 7}[self._year]  # T
@@ -217,8 +218,14 @@ class FlavTreeProducer(Module, object):
         # self.out.branch("ak4_cvbdisc", "F", 20, lenVar="n_ak4")
         # self.out.branch("ak4_cvldisc", "F", 20, lenVar="n_ak4")
         if self.hasParticleNetAK4:
-            self.out.branch("ak4_pn_b", "F", 20, lenVar="n_ak4")
-            self.out.branch("ak4_pn_c", "F", 20, lenVar="n_ak4")
+            self.out.branch("ak4_prob_b", "F", 20, lenVar="n_ak4")
+            self.out.branch("ak4_prob_bb", "F", 20, lenVar="n_ak4")
+            self.out.branch("ak4_prob_c", "F", 20, lenVar="n_ak4")
+            self.out.branch("ak4_prob_cc", "F", 20, lenVar="n_ak4")
+            self.out.branch("ak4_prob_uds", "F", 20, lenVar="n_ak4")
+            self.out.branch("ak4_prob_g", "F", 20, lenVar="n_ak4")
+            self.out.branch("ak4_prob_pu", "F", 20, lenVar="n_ak4")
+            self.out.branch("ak4_prob_undef", "F", 20, lenVar="n_ak4")
 
         self.out.branch("ht", "F")
 
@@ -249,11 +256,14 @@ class FlavTreeProducer(Module, object):
             # if el.pt > 15 and abs(el.eta) < 2.4 and el.cutBased == 4:
             # NOTE: try mvaFall17V2Iso_WP90
             if el.pt > 15 and abs(el.eta) < 2.4 and el.mvaFall17V2Iso_WP90:
+                el._wp_ID = 'wp90iso'
                 event.looseLeptons.append(el)
 
         muons = Collection(event, "Muon")
         for idx, mu in enumerate(muons):
             if mu.pt > 15 and abs(mu.eta) < 2.4 and mu.tightId and mu.pfRelIso04_all < 0.25:
+                mu._wp_ID = 'TightID'
+                mu._wp_Iso = 'LooseRelIso'
                 event.looseLeptons.append(mu)
             elif mu.pt > 5 and abs(mu.eta) < 2.4 and mu.tightId and mu.pfRelIso04_all > 0.25:
                 event.soft_muon_dict[idx] = mu
@@ -271,6 +281,7 @@ class FlavTreeProducer(Module, object):
                 muPtCut = 29 if self._year == 2017 else 26
                 if lep.pt > muPtCut and lep.tightId and lep.pfRelIso04_all < 0.15:
                     # self.muonCorr.correct(event, lep, self.isMC)
+                    lep._wp_Iso = 'TightRelIso'
                     event.selectedLeptons.append(lep)
             else:
                 # ele (29/30/30 GeV)
@@ -280,6 +291,7 @@ class FlavTreeProducer(Module, object):
                 # NOTE: try mvaFall17V2Iso_WP80
                 if lep.pt > ePtCut and lep.mvaFall17V2Iso_WP80:
                     # self.eleCorr.correct(event, lep, self.isMC)
+                    lep._wp_ID = 'wp80iso'
                     event.selectedLeptons.append(lep)
             if len(event.selectedLeptons) != 1:
                 return False
@@ -565,8 +577,14 @@ class FlavTreeProducer(Module, object):
         # ak4_bdisc = []
         # ak4_cvbdisc = []
         # ak4_cvldisc = []
-        ak4_pn_b = []
-        ak4_pn_c = []
+        ak4_prob_b = []
+        ak4_prob_bb = []
+        ak4_prob_c = []
+        ak4_prob_cc = []
+        ak4_prob_uds = []
+        ak4_prob_g = []
+        ak4_prob_pu = []
+        ak4_prob_undef = []
 
         for j in event.ak4jets:
             ak4_pt.append(j.pt)
@@ -587,8 +605,14 @@ class FlavTreeProducer(Module, object):
             # ak4_cvbdisc.append(j.btagDeepFlavCvB)
             # ak4_cvldisc.append(j.btagDeepFlavCvL)
             if self.hasParticleNetAK4:
-                ak4_pn_b.append(j.pn_b)
-                ak4_pn_c.append(j.pn_c)
+                ak4_prob_b.append(j.ParticleNetAK4_probb)
+                ak4_prob_bb.append(j.ParticleNetAK4_probbb)
+                ak4_prob_c.append(j.ParticleNetAK4_probc)
+                ak4_prob_cc.append(j.ParticleNetAK4_probcc)
+                ak4_prob_uds.append(j.ParticleNetAK4_probuds)
+                ak4_prob_g.append(j.ParticleNetAK4_probg)
+                ak4_prob_pu.append(j.ParticleNetAK4_probpu)
+                ak4_prob_undef.append(j.ParticleNetAK4_probundef)
 
         self.out.fillBranch("ak4_pt", ak4_pt)
         self.out.fillBranch("ak4_eta", ak4_eta)
@@ -610,8 +634,14 @@ class FlavTreeProducer(Module, object):
         # self.out.fillBranch("ak4_cvbdisc", ak4_cvbdisc)
         # self.out.fillBranch("ak4_cvldisc", ak4_cvldisc)
         if self.hasParticleNetAK4:
-            self.out.fillBranch("ak4_pn_b", ak4_pn_b)
-            self.out.fillBranch("ak4_pn_c", ak4_pn_c)
+            self.out.fillBranch("ak4_prob_b", ak4_prob_b)
+            self.out.fillBranch("ak4_prob_bb", ak4_prob_bb)
+            self.out.fillBranch("ak4_prob_c", ak4_prob_c)
+            self.out.fillBranch("ak4_prob_cc", ak4_prob_cc)
+            self.out.fillBranch("ak4_prob_uds", ak4_prob_uds)
+            self.out.fillBranch("ak4_prob_g", ak4_prob_g)
+            self.out.fillBranch("ak4_prob_pu", ak4_prob_pu)
+            self.out.fillBranch("ak4_prob_undef", ak4_prob_undef)
 
         self.out.fillBranch("ht", sum([j.pt for j in event.ak4jets]))
 
