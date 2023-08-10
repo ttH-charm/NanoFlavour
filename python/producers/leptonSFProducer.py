@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import correctionlib
 import ROOT
 ROOT.PyConfig.IgnoreCommandLineOptions = True
@@ -9,7 +10,7 @@ from PhysicsTools.NanoAODTools.postprocessing.framework.eventloop import Module
 era_dict = {2015: '2016preVFP_UL', 2016: '2016postVFP_UL', 2017: '2017_UL', 2018: '2018_UL'}
 
 
-def debug(msg, activated=True):
+def debug(msg, activated=False):
     if activated:
         print(' > ', msg)
 
@@ -156,7 +157,62 @@ class MuonSFProducer(Module):
         return True
 
 
+class TriggerSF():
+
+    def __init__(self, year, channel):
+        self.era = era_dict[year]
+        self.channel = channel
+        if channel == '1L':
+            self.corr_mu = correctionlib.CorrectionSet.from_file(
+                f'/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/MUO/{self.era}/muon_Z.json.gz')[
+                'NUM_%s_DEN_CutBasedIdTight_and_PFIsoTight' % ('IsoMu27' if year == 2017 else 'IsoMu24')]
+            self.corr_el = correctionlib.CorrectionSet.from_file(os.path.expandvars(
+                f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/triggerSFs/{self.era}_EleTriggerSF_NanoAODv9_v0.json'))['EleTriggerSF']
+        elif channel == '2L':
+            self.corr = correctionlib.CorrectionSet.from_file(os.path.expandvars(
+                f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/triggerSFs/{self.era}_DiLeptonTriggerSF.json'))
+
+    def get_trigger_sf(self, event):
+        trigWgt = np.ones(3)
+
+        if self.channel == '1L':
+            lep = event.selectedLeptons[0]
+            if abs(lep.pdgId) == 13:
+                trigWgt = np.array([self.corr_mu.evaluate(self.era, abs(lep.eta), lep.pt, syst)
+                                    for syst in ('sf', 'systup', 'systdown')])
+                debug(f'Muon pt:{lep.pt:.1f}, eta:{lep.eta:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
+            elif abs(lep.pdgId) == 11:
+                trigWgt = np.array([self.corr_el.evaluate(syst, lep.pt, lep.etaSC)
+                                    for syst in ('central', 'up', 'down')])
+                debug(f'Electron pt:{lep.pt:.1f}, etaSC:{lep.etaSC:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
+
+        elif self.channel == '2L':
+            electrons = []
+            muons = []
+            for lep in event.selectedLeptons[:2]:
+                if abs(lep.pdgId) == 11:
+                    electrons.append(lep)
+                elif abs(lep.pdgId) == 13:
+                    muons.append(lep)
+
+            if len(electrons) == 2:
+                trigWgt = np.array([self.corr['ElElTriggerSF'].evaluate(syst, electrons[0].pt, electrons[1].pt)
+                                    for syst in ('central', 'up', 'down')])
+            elif len(muons) == 2:
+                trigWgt = np.array([self.corr['MuMuTriggerSF'].evaluate(syst, muons[0].pt, muons[1].pt)
+                                    for syst in ('central', 'up', 'down')])
+            elif len(electrons) == 1 and len(muons) == 1:
+                trigWgt = np.array([self.corr['MuElTriggerSF'].evaluate(syst, muons[0].pt, electrons[0].pt)
+                                    for syst in ('central', 'up', 'down')])
+
+            debug(
+                f'Leading (pdgId:{event.selectedLeptons[0].pdgId}, pt:{event.selectedLeptons[0].pt:.1f}, eta:{event.selectedLeptons[0].eta:.2f}), Sub-Leading (pdgId:{event.selectedLeptons[1].pdgId}, pt:{event.selectedLeptons[1].pt:.1f}, eta:{event.selectedLeptons[1].eta:.2f}), SF(trigger) = {trigWgt} (nom, up, down)')
+
+        return trigWgt
+
 # ====== electron ======
+
+
 def electronSF_2015():
     return ElectronSFProducer(year=2015)
 

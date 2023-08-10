@@ -47,7 +47,7 @@ keepmatch HLT_PFHT[0-9]+
 
 # L1/TrigObj
 dropmatch n?L1_.+
-dropmatch n?TrigObj_.+
+# dropmatch n?TrigObj_.+
 
 # GEN
 dropmatch n?GenDressedLepton_.+

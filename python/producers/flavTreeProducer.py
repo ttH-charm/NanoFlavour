@@ -14,6 +14,7 @@ from ..helpers.jetmetCorrector import JetMETCorrector, rndSeed
 # from ..helpers.electronCorrector import ElectronScaleResCorrector
 # from ..helpers.muonCorrector import MuonScaleResCorrector
 from ..helpers.triggerHelper import passTrigger
+from .leptonSFProducer import TriggerSF
 
 import logging
 logger = logging.getLogger('nano')
@@ -100,6 +101,8 @@ class FlavTreeProducer(Module, object):
         # self.puID_WP = {2015: 3, 2016: 3, 2017: 6, 2018: 6}[self._year]  # M
         self.puID_WP = {2015: 7, 2016: 7, 2017: 7, 2018: 7}[self._year]  # T
 
+        self._trigSF = TriggerSF(self._year, '1L' if self._channel in ('WJets', 'TT1L') else '2L')
+
         logger.info('Running %s channel for year %s with jet tagging WPs %s, jet PU ID WPs %s',
                     self._channel, str(self._year), str(self.jetTagWPs), str(self.puID_WP))
 
@@ -146,6 +149,11 @@ class FlavTreeProducer(Module, object):
         # extra single e/mu trigger for 2L
         self.out.branch("passTrig2L_extEl", "O")
         self.out.branch("passTrig2L_extMu", "O")
+
+        if self.isMC:
+            self.out.branch("trigEffWeight", "F")
+            self.out.branch("trigEffWeightUp", "F")
+            self.out.branch("trigEffWeightDown", "F")
 
         self.out.branch("l1PreFiringWeight", "F")
         self.out.branch("l1PreFiringWeightUp", "F")
@@ -464,9 +472,18 @@ class FlavTreeProducer(Module, object):
             self.out.fillBranch("passTrig2L_extEl", passTrigger(event, 'HLT_Ele27_WPTight_Gsf'))
             self.out.fillBranch("passTrig2L_extMu", passTrigger(event, ['HLT_IsoMu24', 'HLT_IsoTkMu24']))
         elif self._year == 2017:
-            # NOTE: switched to HLT_Ele35_WPTight_Gsf for single electron trigger
+            passL1 = False
+            for lep in event.selectedLeptons:
+                if abs(lep.pdgId) != 11:
+                    continue
+                for obj in Collection(event, 'TrigObj'):
+                    if (obj.filterBits & 1024) and deltaR(obj, lep) < 0.1:
+                        passL1 = True
+                        break
+            event.HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1 = event.HLT_Ele32_WPTight_Gsf_L1DoubleEG and passL1
+
             self.out.fillBranch("passTrigEl", passTrigger(
-                event, ['HLT_Ele35_WPTight_Gsf', 'HLT_Ele28_eta2p1_WPTight_Gsf_HT150']))
+                event, ['HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1', 'HLT_Ele28_eta2p1_WPTight_Gsf_HT150']))
             self.out.fillBranch("passTrigMu", passTrigger(event, 'HLT_IsoMu27'))
             self.out.fillBranch("passTrigElEl", passTrigger(event, ['HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL',
                                                                     'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ']))
@@ -479,7 +496,7 @@ class FlavTreeProducer(Module, object):
                 "passTrigMuMu", passTrigger(event, 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ')
                 if event.run <= 299329 else  # Run2017B
                 passTrigger(event, 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8'))
-            self.out.fillBranch("passTrig2L_extEl", passTrigger(event, 'HLT_Ele32_WPTight_Gsf_L1DoubleEG'))
+            self.out.fillBranch("passTrig2L_extEl", passTrigger(event, 'HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1'))
             self.out.fillBranch("passTrig2L_extMu", passTrigger(event, ['HLT_IsoMu24_eta2p1', 'HLT_IsoMu27']))
         elif self._year == 2018:
             self.out.fillBranch("passTrigEl", passTrigger(event,
@@ -499,6 +516,13 @@ class FlavTreeProducer(Module, object):
                                                              'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8']))
             self.out.fillBranch("passTrig2L_extEl", passTrigger(event, 'HLT_Ele32_WPTight_Gsf'))
             self.out.fillBranch("passTrig2L_extMu", passTrigger(event, 'HLT_IsoMu24'))
+
+        # trigger SFs
+        if self.isMC:
+            trigWgt = self._trigSF.get_trigger_sf(event)
+            self.out.fillBranch("trigEffWeight", trigWgt[0])
+            self.out.fillBranch("trigEffWeightUp", trigWgt[1])
+            self.out.fillBranch("trigEffWeightDown", trigWgt[2])
 
         # L1 prefire weights
         if self._year <= 2017:
