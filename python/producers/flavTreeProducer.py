@@ -260,6 +260,8 @@ class FlavTreeProducer(Module, object):
         electrons = Collection(event, "Electron")
         for el in electrons:
             el.etaSC = el.eta + el.deltaEtaSC
+            if 1.4442 < abs(el.etaSC) < 1.5560:
+                continue
             # ttH(bb) analysis uses tight electron ID
             # if el.pt > 15 and abs(el.eta) < 2.4 and el.cutBased == 4:
             # NOTE: try mvaFall17V2Iso_WP90
