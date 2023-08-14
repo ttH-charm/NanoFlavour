@@ -29,7 +29,7 @@ class ElectronSFProducer(Module):
 
         wp = None
         if sf_type == 'Reco':
-            wp = 'RecoAbove20' if lep.pt > 20 else 'RecoBelow20'
+            wp = 'RecoBelow20' if lep.pt < 20 else 'RecoAbove20'
         elif sf_type == 'ID':
             wp = lep._wp_ID
 
