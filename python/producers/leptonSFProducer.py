@@ -165,7 +165,8 @@ class TriggerSF():
         if channel == '1L':
             self.corr_mu = correctionlib.CorrectionSet.from_file(
                 f'/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/MUO/{self.era}/muon_Z.json.gz')[
-                'NUM_%s_DEN_CutBasedIdTight_and_PFIsoTight' % ('IsoMu27' if year == 2017 else 'IsoMu24')]
+                'NUM_%s_DEN_CutBasedIdTight_and_PFIsoTight' %
+                ('IsoMu27' if year == 2017 else 'IsoMu24' if year == 2018 else 'IsoMu24_or_IsoTkMu24')]
             self.corr_el = correctionlib.CorrectionSet.from_file(os.path.expandvars(
                 f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/triggerSFs/{self.era}_EleTriggerSF_NanoAODv9_v0.json'))['EleTriggerSF']
         elif channel == '2L':
