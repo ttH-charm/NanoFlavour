@@ -32,27 +32,32 @@ golden_json = {
 def _base_cut(year, channel):
     # FIXME: remember to update this whenever the selections change in flavTreeProducer.py
     # FIXME: why not using ``Electron_mvaFall17V2Iso_WP90'' for 2L? ~40% gain in signal eff.
+    ePtCut = 30 if int(year) in (2017, 2018) else 29
+
     cut_dict = {
         # ttH(bb) analysis uses tight electron ID
         # 'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_cutBased==4',
-        'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_mvaFall17V2Iso_WP90',
+        'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_mvaFall17V2Iso_WP90'
+                   ' && (abs(Electron_eta+Electron_deltaEtaSC)<1.4442 || abs(Electron_eta+Electron_deltaEtaSC)>1.5560)',
         'mu_cut': 'Muon_pt>15 && abs(Muon_eta)<2.4 && Muon_tightId && Muon_pfRelIso04_all<0.25',
+        'tight_ele_cut': f'Electron_pt>{ePtCut} && Electron_mvaFall17V2Iso_WP80',
+        'tight_mu_cut': 'Muon_pfRelIso04_all<0.15',
         'jet_count': 'Sum$(Jet_pt>15 && abs(Jet_eta)<2.4 && (Jet_jetId & 4))',
     }
     basesels = {
         # 1L: *one and only one* e/mu w/ pT > 15, but *at least one* e/mu w/ pT above a (year-dependent) higher threshold (here put the lowest of the three years)
         'WJets': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 1 && '
-                 '(Sum$(Electron_pt>29 && Electron_mvaFall17V2Iso_WP80 && {ele_cut}) + Sum$(Muon_pt>26 && Muon_pfRelIso04_all<0.15 && {mu_cut})) >= 1 && '
+                 '(Sum$({ele_cut} && {tight_ele_cut}) + Sum$({mu_cut} && {tight_mu_cut})) >= 1 && '
                  '{jet_count}>=1',
         'TT1L': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 1 && '
-                 '(Sum$(Electron_pt>29 && Electron_mvaFall17V2Iso_WP80 && {ele_cut}) + Sum$(Muon_pt>26 && Muon_pfRelIso04_all<0.15 && {mu_cut})) >= 1 && '
-                 '{jet_count}>=1',
+                '(Sum$({ele_cut} && {tight_ele_cut}) + Sum$({mu_cut} && {tight_mu_cut})) >= 1 && '
+                '{jet_count}>=1',
         # 2L: exactly 2 e/mu w/ pT > 15
         'ZJets': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 2 && '
-                 '(Sum$(Electron_pt>25 && {ele_cut}) + Sum$(Muon_pt>25 && {mu_cut})) >= 1 && '
+                 '(Sum$(Electron_pt>25 && {ele_cut}) + Sum$({mu_cut})) >= 1 && '
                  '{jet_count}>=1',
         'TT2L': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 2 && '
-                 '(Sum$(Electron_pt>25 && {ele_cut}) + Sum$(Muon_pt>25 && {mu_cut})) >= 1 && '
+                 '(Sum$(Electron_pt>25 && {ele_cut}) + Sum$({mu_cut})) >= 1 && '
                  '{jet_count}>=1',
     }
     cut = basesels[channel].format(**cut_dict)
@@ -95,7 +100,6 @@ def _process(args):
             cfg['jmr'] = None
             cfg['met_unclustered'] = None
         run(args, configs={flav_cfgname: cfg})
-        return
 
     # MC for syst.
     if args.type == 'mc' and args.run_syst:
@@ -146,6 +150,7 @@ def _process(args):
                 opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
                 run(opts, configs={flav_cfgname: cfg})
 
+    if args.type == 'mc' and (args.run_syst or args.run_hem_syst):
         # HEM15/16 unc
         if year == '2018':
             for variation in ['down']:
@@ -213,6 +218,10 @@ def main():
     parser.add_argument('--run-syst',
                         action='store_true', default=False,
                         help='Run all the systematic trees. Default: %(default)s'
+                        )
+    parser.add_argument('--run-hem-syst',
+                        action='store_true', default=False,
+                        help='Run HEM systematic trees. Default: %(default)s'
                         )
 
     parser.add_argument('--run-all',

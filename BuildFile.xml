@@ -1,0 +1,5 @@
+<use name="boost"/>
+<use name="RecoEgamma/EgammaTools"/>
+<export>
+  <lib   name="1"/>
+</export>

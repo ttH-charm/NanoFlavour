@@ -53,8 +53,8 @@ def rndSeed(event, obj):
 
 
 class MuonScaleResCorrector(object):
-    def __init__(self, year, corr='nominal', geofit=True):
-        self.year = year
+    def __init__(self, year, corr='nominal', geofit=False):
+        self.era = {2015: '2016aUL', 2016: '2016bUL', 2017: '2017UL', 2018: '2018UL'}[year]
         self.corr = corr
         self.geofit = geofit
         if self.corr:
@@ -62,7 +62,7 @@ class MuonScaleResCorrector(object):
                 if library not in ROOT.gSystem.GetLibraries():
                     print("Load Library '%s'" % library.replace("lib", ""))
                     ROOT.gSystem.Load(library)
-            fn = os.environ['CMSSW_BASE'] + '/src/PhysicsTools/NanoAODTools/python/postprocessing/data/roccor.Run2.v3/RoccoR%s.txt' % year
+            fn = os.environ['CMSSW_BASE'] + '/src/PhysicsTools/NanoFlavour/data/roccor.Run2.v5/RoccoR%s.txt' % self.era
             print('Loading muon scale and smearing file from %s' % fn)
             self._roccor = ROOT.RoccoR(fn)
             self.rnd = ROOT.TRandom3()

@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 import math
 import ROOT
@@ -8,11 +9,9 @@ from PhysicsTools.NanoAODTools.postprocessing.framework.datamodel import Collect
 from PhysicsTools.NanoAODTools.postprocessing.framework.eventloop import Module
 
 from ..helpers.utils import deltaPhi, deltaR, deltaR2, deltaEta, closest, polarP4, sumP4, transverseMass, minValue, configLogger, getDigit, closest_pair
-from ..helpers.ortHelper import ONNXRuntimeHelper
-from ..helpers.nnHelper import convert_prob, ensemble
+from ..helpers.nnHelper import convert_prob
 from ..helpers.jetmetCorrector import JetMETCorrector, rndSeed
-# from ..helpers.electronCorrector import ElectronScaleResCorrector
-# from ..helpers.muonCorrector import MuonScaleResCorrector
+from ..helpers.muonCorrector import MuonScaleResCorrector
 from ..helpers.triggerHelper import passTrigger
 from .leptonSFProducer import TriggerSF
 
@@ -39,7 +38,7 @@ class FlavTreeProducer(Module, object):
         self._jmeSysts = {'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': '',
                           'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
                           'smearMET': False}
-        self._opts = {}
+        self._opts = {'muon_scale': 'nominal'}
         for k in kwargs:
             if k in self._jmeSysts:
                 self._jmeSysts[k] = kwargs[k]
@@ -55,10 +54,7 @@ class FlavTreeProducer(Module, object):
         if self._needsJMECorr:
             self.jetmetCorr = JetMETCorrector(year=self._year, jetType="AK4PFchs", **self._jmeSysts)
 
-        # self.eleCorr = ElectronScaleResCorrector(year=self._year, corr=self._opts['ele_scale'])
-        # self.muonCorr = MuonScaleResCorrector(
-        #     year=self._year, corr=self._opts['muon_scale'],
-        #     geofit=self._opts['muon_geofit'])
+        self.muonCorr = MuonScaleResCorrector(year=self._year, corr=self._opts['muon_scale'])
 
         # ParticleNetAK4 -- exclusive b- and c-tagging categories
         # 5x: b-tagged; 4x: c-tagged; 0: light
@@ -127,6 +123,11 @@ class FlavTreeProducer(Module, object):
             raise RuntimeError('No ParticleNetAK4 scores in the input NanoAOD!')
         self.rho_branch_name = 'Rho_fixedGridRhoFastjetAll' if bool(
             inputTree.GetBranch('Rho_fixedGridRhoFastjetAll')) else 'fixedGridRhoFastjetAll'
+
+        self.dataset = None
+        r = re.search(('mc' if self.isMC else 'data') + r'\/([a-zA-Z0-9_\-]+)\/', inputFile.GetName())
+        if r:
+            self.dataset = r.groups()[0]
 
         self.out = wrappedOutputTree
 
@@ -260,11 +261,11 @@ class FlavTreeProducer(Module, object):
         electrons = Collection(event, "Electron")
         for el in electrons:
             el.etaSC = el.eta + el.deltaEtaSC
-            if 1.4442 < abs(el.etaSC) < 1.5560:
-                continue
             # ttH(bb) analysis uses tight electron ID
             # if el.pt > 15 and abs(el.eta) < 2.4 and el.cutBased == 4:
             # NOTE: try mvaFall17V2Iso_WP90
+            if 1.4442 <= abs(el.etaSC) <= 1.5560:
+                continue
             if el.pt > 15 and abs(el.eta) < 2.4 and el.mvaFall17V2Iso_WP90:
                 el._wp_ID = 'wp90iso'
                 event.looseLeptons.append(el)
@@ -274,6 +275,7 @@ class FlavTreeProducer(Module, object):
             if mu.pt > 15 and abs(mu.eta) < 2.4 and mu.tightId and mu.pfRelIso04_all < 0.25:
                 mu._wp_ID = 'TightID'
                 mu._wp_Iso = 'LooseRelIso'
+                self.muonCorr.correct(event, mu, self.isMC)
                 event.looseLeptons.append(mu)
             elif mu.pt > 5 and abs(mu.eta) < 2.4 and mu.tightId and mu.pfRelIso04_all > 0.25:
                 event.soft_muon_dict[idx] = mu
@@ -290,7 +292,6 @@ class FlavTreeProducer(Module, object):
                 # mu (26/29/26 GeV)
                 muPtCut = 29 if self._year == 2017 else 26
                 if lep.pt > muPtCut and lep.tightId and lep.pfRelIso04_all < 0.15:
-                    # self.muonCorr.correct(event, lep, self.isMC)
                     lep._wp_Iso = 'TightRelIso'
                     event.selectedLeptons.append(lep)
             else:
@@ -300,7 +301,6 @@ class FlavTreeProducer(Module, object):
                 # if lep.pt > ePtCut and lep.cutBased == 4:
                 # NOTE: try mvaFall17V2Iso_WP80
                 if lep.pt > ePtCut and lep.mvaFall17V2Iso_WP80:
-                    # self.eleCorr.correct(event, lep, self.isMC)
                     lep._wp_ID = 'wp80iso'
                     event.selectedLeptons.append(lep)
             if len(event.selectedLeptons) != 1:
@@ -316,12 +316,6 @@ class FlavTreeProducer(Module, object):
             if len(event.looseLeptons) != 2:
                 return False
             for lep in event.looseLeptons:
-                # if abs(lep.pdgId) == 11:
-                #     # mu
-                #     self.muonCorr.correct(event, lep, self.isMC)
-                # else:
-                #     # el
-                #     self.eleCorr.correct(event, lep, self.isMC)
                 event.selectedLeptons.append(lep)
             if len(event.selectedLeptons) != 2:
                 return False
@@ -412,12 +406,18 @@ class FlavTreeProducer(Module, object):
             if not (1 <= len(event.ak4jets) <= 2):
                 return False
         elif self._channel == 'WJets':
-            # 1 <= njets <= 2
-            if not (1 <= len(event.ak4jets) <= 2):
+            # # 1 <= njets <= 2
+            # if not (1 <= len(event.ak4jets) <= 2):
+            # njets == 1
+            if len(event.ak4jets) != 1:
                 return False
             if event.met.pt < 50:
                 return False
             if transverseMass(event.selectedLeptons[0], event.met) < 50:
+                return False
+            if abs(deltaPhi(event.met.phi, event.TkMET_phi)) > 1:
+                return False
+            if abs(deltaPhi(event.met, event.ak4jets[0])) < 1:
                 return False
         elif self._channel == 'TT1L':
             # 3 <= njets <= 4
@@ -433,6 +433,118 @@ class FlavTreeProducer(Module, object):
                 return False
 
         # return True if passes selection
+        return True
+
+    def _selectTriggers(self, event):
+        out_data = {}
+
+        # !!! NOTE: make sure to update `keep_and_drop_input.txt` !!!
+        if self._year <= 2016:
+            out_data["passTrigEl"] = passTrigger(event, 'HLT_Ele27_WPTight_Gsf')
+            out_data["passTrigMu"] = passTrigger(event, ['HLT_IsoMu24', 'HLT_IsoTkMu24'])
+            out_data["passTrigElEl"] = passTrigger(event, 'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ')
+            out_data["passTrigElMu"] = passTrigger(event,
+                                                   ['HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL',
+                                                    'HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ',
+                                                    'HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL',
+                                                    'HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ'])
+            out_data["passTrigMuMu"] = (
+                passTrigger(event, ['HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL', 'HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL'])
+                if event.run <= 280385 else  # Run2016G
+                passTrigger(event, ['HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ', 'HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ'])
+            )
+            out_data["passTrig2L_extEl"] = passTrigger(event, 'HLT_Ele27_WPTight_Gsf')
+            out_data["passTrig2L_extMu"] = passTrigger(event, ['HLT_IsoMu24', 'HLT_IsoTkMu24'])
+        elif self._year == 2017:
+            passL1 = False
+            for lep in event.selectedLeptons:
+                if abs(lep.pdgId) != 11:
+                    continue
+                for obj in Collection(event, 'TrigObj'):
+                    if (obj.filterBits & 1024) and deltaR(obj, lep) < 0.1:
+                        passL1 = True
+                        break
+            event.HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1 = event.HLT_Ele32_WPTight_Gsf_L1DoubleEG and passL1
+
+            out_data["passTrigEl"] = passTrigger(
+                event, ['HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1', 'HLT_Ele28_eta2p1_WPTight_Gsf_HT150'])
+            out_data["passTrigMu"] = passTrigger(event, 'HLT_IsoMu27')
+            out_data["passTrigElEl"] = passTrigger(event, ['HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL',
+                                                           'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ'])
+            out_data["passTrigElMu"] = passTrigger(event,
+                                                   ['HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL',
+                                                    'HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ',
+                                                    'HLT_Mu12_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ',
+                                                    'HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ'])
+            out_data["passTrigMuMu"] = (
+                passTrigger(event, 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ')
+                if event.run <= 299329 else  # Run2017B
+                passTrigger(event, 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8'))
+            out_data["passTrig2L_extEl"] = passTrigger(event, 'HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1')
+            out_data["passTrig2L_extMu"] = passTrigger(event, ['HLT_IsoMu24_eta2p1', 'HLT_IsoMu27'])
+        elif self._year == 2018:
+            out_data["passTrigEl"] = passTrigger(event,
+                                                 ['HLT_Ele32_WPTight_Gsf',
+                                                  'HLT_Ele28_eta2p1_WPTight_Gsf_HT150'])
+            out_data["passTrigMu"] = passTrigger(event, 'HLT_IsoMu24')
+            out_data["passTrigElEl"] = passTrigger(event,
+                                                   ['HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL',
+                                                    'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ'])
+            out_data["passTrigElMu"] = passTrigger(event,
+                                                   ['HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL',
+                                                    'HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ',
+                                                    'HLT_Mu12_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ',
+                                                    'HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ'])
+            out_data["passTrigMuMu"] = passTrigger(event,
+                                                   ['HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8',
+                                                    'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8'])
+            out_data["passTrig2L_extEl"] = passTrigger(event, 'HLT_Ele32_WPTight_Gsf')
+            out_data["passTrig2L_extMu"] = passTrigger(event, 'HLT_IsoMu24')
+
+        # apply trigger selections on data
+        if not self.isMC and self.dataset is not None:
+            if self._channel in ('WJets', 'TT1L'):
+                passTrig1L = False
+                if self.dataset in ('EGamma', 'SingleElectron'):
+                    passTrig1L = out_data['passTrigEl']
+                elif self.dataset == 'SingleMuon':
+                    passTrig1L = out_data['passTrigMu']
+                if not passTrig1L:
+                    return False
+
+            elif self._channel in ('ZJets', 'TT2L'):
+                passTrigEE = False
+                if self._year == 2018:
+                    if self.dataset == 'EGamma':
+                        passTrigEE = out_data["passTrigElEl"] or out_data['passTrig2L_extEl']
+                else:
+                    if self.dataset == 'DoubleEG':
+                        passTrigEE = out_data["passTrigElEl"]
+                    elif self.dataset == 'SingleElectron':
+                        passTrigEE = (not out_data["passTrigElEl"]) and out_data["passTrig2L_extEl"]
+
+                passTrigMM = False
+                if self.dataset == 'DoubleMuon':
+                    passTrigMM = out_data["passTrigMuMu"]
+                elif self.dataset == 'SingleMuon':
+                    passTrigMM = (not out_data["passTrigMuMu"]) and out_data["passTrig2L_extMu"]
+
+                passTrigEM = False
+                if self.dataset == 'MuonEG':
+                    passTrigEM = out_data["passTrigElMu"]
+                elif self.dataset == 'SingleMuon':
+                    passTrigEM = (not out_data["passTrigElMu"]) and out_data["passTrig2L_extMu"]
+                elif self.dataset in ('EGamma', 'SingleElectron'):
+                    passTrigEM = (not out_data["passTrigElMu"]) and (
+                        not out_data["passTrig2L_extMu"]) and out_data["passTrig2L_extEl"]
+
+                passTrig2L = passTrigEE or passTrigMM or passTrigEM
+                if not passTrig2L:
+                    return False
+
+        for key in out_data:
+            self.out.fillBranch(key, out_data[key])
+
         return True
 
     def _fillEventInfo(self, event):
@@ -454,70 +566,6 @@ class FlavTreeProducer(Module, object):
         if self._year in (2017, 2018):
             met_filters = met_filters and event.Flag_ecalBadCalibFilter
         self.out.fillBranch("passmetfilters", met_filters)
-
-        # trigger
-        # !!! NOTE: make sure to update `keep_and_drop_input.txt` !!!
-        if self._year <= 2016:
-            self.out.fillBranch("passTrigEl", passTrigger(event, 'HLT_Ele27_WPTight_Gsf'))
-            self.out.fillBranch("passTrigMu", passTrigger(event, ['HLT_IsoMu24', 'HLT_IsoTkMu24']))
-            self.out.fillBranch("passTrigElEl", passTrigger(event, 'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ'))
-            self.out.fillBranch("passTrigElMu", passTrigger(event,
-                                                            ['HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL',
-                                                             'HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ',
-                                                             'HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL',
-                                                             'HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ']))
-            self.out.fillBranch(
-                "passTrigMuMu",
-                passTrigger(event, ['HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL', 'HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL'])
-                if event.run <= 280385 else  # Run2016G
-                passTrigger(event, ['HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ', 'HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ']))
-            self.out.fillBranch("passTrig2L_extEl", passTrigger(event, 'HLT_Ele27_WPTight_Gsf'))
-            self.out.fillBranch("passTrig2L_extMu", passTrigger(event, ['HLT_IsoMu24', 'HLT_IsoTkMu24']))
-        elif self._year == 2017:
-            passL1 = False
-            for lep in event.selectedLeptons:
-                if abs(lep.pdgId) != 11:
-                    continue
-                for obj in Collection(event, 'TrigObj'):
-                    if (obj.filterBits & 1024) and deltaR(obj, lep) < 0.1:
-                        passL1 = True
-                        break
-            event.HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1 = event.HLT_Ele32_WPTight_Gsf_L1DoubleEG and passL1
-
-            self.out.fillBranch("passTrigEl", passTrigger(
-                event, ['HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1', 'HLT_Ele28_eta2p1_WPTight_Gsf_HT150']))
-            self.out.fillBranch("passTrigMu", passTrigger(event, 'HLT_IsoMu27'))
-            self.out.fillBranch("passTrigElEl", passTrigger(event, ['HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL',
-                                                                    'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ']))
-            self.out.fillBranch("passTrigElMu", passTrigger(event,
-                                                            ['HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL',
-                                                             'HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ',
-                                                             'HLT_Mu12_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ',
-                                                             'HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ']))
-            self.out.fillBranch(
-                "passTrigMuMu", passTrigger(event, 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ')
-                if event.run <= 299329 else  # Run2017B
-                passTrigger(event, 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8'))
-            self.out.fillBranch("passTrig2L_extEl", passTrigger(event, 'HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1'))
-            self.out.fillBranch("passTrig2L_extMu", passTrigger(event, ['HLT_IsoMu24_eta2p1', 'HLT_IsoMu27']))
-        elif self._year == 2018:
-            self.out.fillBranch("passTrigEl", passTrigger(event,
-                                                          ['HLT_Ele32_WPTight_Gsf',
-                                                           'HLT_Ele28_eta2p1_WPTight_Gsf_HT150']))
-            self.out.fillBranch("passTrigMu", passTrigger(event, 'HLT_IsoMu24'))
-            self.out.fillBranch("passTrigElEl", passTrigger(event,
-                                                            ['HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL',
-                                                             'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ']))
-            self.out.fillBranch("passTrigElMu", passTrigger(event,
-                                                            ['HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL',
-                                                             'HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ',
-                                                             'HLT_Mu12_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ',
-                                                             'HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ']))
-            self.out.fillBranch("passTrigMuMu", passTrigger(event,
-                                                            ['HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass8',
-                                                             'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8']))
-            self.out.fillBranch("passTrig2L_extEl", passTrigger(event, 'HLT_Ele32_WPTight_Gsf'))
-            self.out.fillBranch("passTrig2L_extMu", passTrigger(event, 'HLT_IsoMu24'))
 
         # trigger SFs
         if self.isMC:
@@ -678,12 +726,15 @@ class FlavTreeProducer(Module, object):
         event._allJets = Collection(event, "Jet")
         event.met = METObject(event, "MET")
 
+        if self._selectTriggers(event) is False:
+            return False
+
         self._selectLeptons(event)
         if self._preSelect(event) is False:
             return False
         self._correctJetAndMET(event)
-        self._cleanObjects(event)  # checked
-        if self._selectEvent(event) is False:  # checked
+        self._cleanObjects(event)
+        if self._selectEvent(event) is False:
             return False
         # fill
         self._fillEventInfo(event)
