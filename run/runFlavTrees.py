@@ -39,25 +39,22 @@ def _base_cut(year, channel):
         # 'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_cutBased==4',
         'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_mvaFall17V2Iso_WP90'
                    ' && (abs(Electron_eta+Electron_deltaEtaSC)<1.4442 || abs(Electron_eta+Electron_deltaEtaSC)>1.5560)',
-        'mu_cut': 'Muon_pt>15 && abs(Muon_eta)<2.4 && Muon_tightId && Muon_pfRelIso04_all<0.25',
+        'mu_cut': 'Muon_pt>10 && abs(Muon_eta)<2.4 && Muon_tightId && Muon_pfRelIso04_all<0.25',
         'tight_ele_cut': f'Electron_pt>{ePtCut} && Electron_mvaFall17V2Iso_WP80',
         'tight_mu_cut': 'Muon_pfRelIso04_all<0.15',
         'jet_count': 'Sum$(Jet_pt>15 && abs(Jet_eta)<2.4 && (Jet_jetId & 4))',
     }
     basesels = {
-        # 1L: *one and only one* e/mu w/ pT > 15, but *at least one* e/mu w/ pT above a (year-dependent) higher threshold (here put the lowest of the three years)
-        'WJets': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 1 && '
-                 '(Sum$({ele_cut} && {tight_ele_cut}) + Sum$({mu_cut} && {tight_mu_cut})) >= 1 && '
+        # 1L presel: >=1 tight e/mu
+        'WJets': '(Sum$({ele_cut} && {tight_ele_cut}) + Sum$({mu_cut} && {tight_mu_cut})) >= 1 && '
                  '{jet_count}>=1',
-        'TT1L': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 1 && '
-                '(Sum$({ele_cut} && {tight_ele_cut}) + Sum$({mu_cut} && {tight_mu_cut})) >= 1 && '
+        'TT1L': '(Sum$({ele_cut} && {tight_ele_cut}) + Sum$({mu_cut} && {tight_mu_cut})) >= 1 && '
                 '{jet_count}>=1',
-        # 2L: exactly 2 e/mu w/ pT > 15
-        'ZJets': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 2 && '
-                 '(Sum$(Electron_pt>25 && {ele_cut}) + Sum$({mu_cut})) >= 1 && '
+        # ZJets presel: >= 2 loose e OR >=2 loose mu
+        'ZJets': '(Sum$({ele_cut})>=2 || Sum$({mu_cut})>=2) && '
                  '{jet_count}>=1',
-        'TT2L': '(Sum$({ele_cut}) + Sum$({mu_cut})) == 2 && '
-                 '(Sum$(Electron_pt>25 && {ele_cut}) + Sum$({mu_cut})) >= 1 && '
+        # TT2L (em) presel: >= 1 loose e AND >=1 loose mu
+        'TT2L': '(Sum$({ele_cut})>=1 && Sum$({mu_cut})>=1) && '
                  '{jet_count}>=1',
     }
     cut = basesels[channel].format(**cut_dict)

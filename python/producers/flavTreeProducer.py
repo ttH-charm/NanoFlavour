@@ -272,10 +272,10 @@ class FlavTreeProducer(Module, object):
 
         muons = Collection(event, "Muon")
         for idx, mu in enumerate(muons):
+            self.muonCorr.correct(event, mu, self.isMC)
             if mu.pt > 15 and abs(mu.eta) < 2.4 and mu.tightId and mu.pfRelIso04_all < 0.25:
                 mu._wp_ID = 'TightID'
                 mu._wp_Iso = 'LooseRelIso'
-                self.muonCorr.correct(event, mu, self.isMC)
                 event.looseLeptons.append(mu)
             elif mu.pt > 5 and abs(mu.eta) < 2.4 and mu.tightId and mu.pfRelIso04_all > 0.25:
                 event.soft_muon_dict[idx] = mu
@@ -456,18 +456,15 @@ class FlavTreeProducer(Module, object):
             out_data["passTrig2L_extEl"] = passTrigger(event, 'HLT_Ele27_WPTight_Gsf')
             out_data["passTrig2L_extMu"] = passTrigger(event, ['HLT_IsoMu24', 'HLT_IsoTkMu24'])
         elif self._year == 2017:
-            passL1 = False
-            for lep in event.selectedLeptons:
-                if abs(lep.pdgId) != 11:
-                    continue
-                for obj in Collection(event, 'TrigObj'):
-                    if (obj.filterBits & 1024) and deltaR(obj, lep) < 0.1:
-                        passL1 = True
-                        break
-            event.HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1 = event.HLT_Ele32_WPTight_Gsf_L1DoubleEG and passL1
-
+            flagL1DoubleEG = False
+            for obj in Collection(event, "TrigObj"):
+                if (obj.id == 11) and (obj.filterBits & 1024):
+                    # 1024 = 1e (32_L1DoubleEG_AND_L1SingleEGOr)
+                    flagL1DoubleEG = True
+                    break
+            event.HLT_Ele32_WPTight_Gsf_L1DoubleEG_L1Flag = event.HLT_Ele32_WPTight_Gsf_L1DoubleEG and flagL1DoubleEG
             out_data["passTrigEl"] = passTrigger(
-                event, ['HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1', 'HLT_Ele28_eta2p1_WPTight_Gsf_HT150'])
+                event, ['HLT_Ele32_WPTight_Gsf_L1DoubleEG_L1Flag', 'HLT_Ele28_eta2p1_WPTight_Gsf_HT150'])
             out_data["passTrigMu"] = passTrigger(event, 'HLT_IsoMu27')
             out_data["passTrigElEl"] = passTrigger(event, ['HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL',
                                                            'HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ'])
@@ -480,7 +477,7 @@ class FlavTreeProducer(Module, object):
                 passTrigger(event, 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ')
                 if event.run <= 299329 else  # Run2017B
                 passTrigger(event, 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ_Mass3p8'))
-            out_data["passTrig2L_extEl"] = passTrigger(event, 'HLT_Ele32_WPTight_Gsf_L1DoubleEG_plusL1')
+            out_data["passTrig2L_extEl"] = passTrigger(event, 'HLT_Ele32_WPTight_Gsf_L1DoubleEG_L1Flag')
             out_data["passTrig2L_extMu"] = passTrigger(event, ['HLT_IsoMu24_eta2p1', 'HLT_IsoMu27'])
         elif self._year == 2018:
             out_data["passTrigEl"] = passTrigger(event,
