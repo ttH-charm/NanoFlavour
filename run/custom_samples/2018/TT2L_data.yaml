@@ -1,2 +1,8 @@
 mueg:
    - MuonEG
+
+singlemu:
+   - SingleMuon
+
+singlee:
+   - EGamma

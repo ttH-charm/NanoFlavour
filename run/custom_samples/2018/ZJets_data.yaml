@@ -3,3 +3,6 @@ doublemu:
 
 doubleeg:
    - EGamma
+
+singlemu:
+   - SingleMuon

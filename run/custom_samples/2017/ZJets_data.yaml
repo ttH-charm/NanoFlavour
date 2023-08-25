@@ -3,3 +3,9 @@ doublemu:
 
 doubleeg:
    - DoubleEG
+
+singlemu:
+   - SingleMuon
+
+singlee:
+   - SingleElectron
