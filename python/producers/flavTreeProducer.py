@@ -21,6 +21,17 @@ configLogger('nano', loglevel=logging.INFO)
 
 lumi_dict = {2015: 19.52, 2016: 16.81, 2017: 41.48, 2018: 59.83}
 channel_dict = {'ZJets': 0, 'WJets': 1, 'TT1L': 2, 'TT2L': 3}
+dataset_dict = {
+    'SingleMuon': 100001,
+    'SingleElectron': 100002,
+    'MuonEG': 100003,
+    'DoubleMuon': 100004,
+    'DoubleEG': 100005,
+    'EGamma': 100006,
+    'JetHT': 100007,
+    'MET': 100008,
+    'BtagCSV': 100009,
+}
 
 
 class METObject(Object):
@@ -133,6 +144,7 @@ class FlavTreeProducer(Module, object):
 
         # NOTE: branch names must start with a lower case letter
         # check keep_and_drop_output.txt
+        self.out.branch("dataset", "I", title=', '.join([f'{k}={v}' for k, v in dataset_dict.items()]))
         self.out.branch("year", "I")
         self.out.branch("channel", "I")
         self.out.branch("lumiwgt", "F")
@@ -510,32 +522,33 @@ class FlavTreeProducer(Module, object):
                     return False
 
             elif self._channel in ('ZJets', 'TT2L'):
-                passTrigEE = False
-                if self._year == 2018:
-                    if self.dataset == 'EGamma':
-                        passTrigEE = out_data["passTrigElEl"] or out_data['passTrig2L_extEl']
+                passTrig2L = False
+                if abs(event.selectedLeptons[0].pdgId) == 11 and abs(event.selectedLeptons[1].pdgId) == 11:
+                    # ee channel
+                    if self._year == 2018:
+                        if self.dataset == 'EGamma':
+                            passTrig2L = out_data["passTrigElEl"] or out_data['passTrig2L_extEl']
+                    else:
+                        if self.dataset == 'DoubleEG':
+                            passTrig2L = out_data["passTrigElEl"]
+                        elif self.dataset == 'SingleElectron':
+                            passTrig2L = (not out_data["passTrigElEl"]) and out_data["passTrig2L_extEl"]
+                elif abs(event.selectedLeptons[0].pdgId) == 13 and abs(event.selectedLeptons[1].pdgId) == 13:
+                    # mumu channel
+                    if self.dataset == 'DoubleMuon':
+                        passTrig2L = out_data["passTrigMuMu"]
+                    elif self.dataset == 'SingleMuon':
+                        passTrig2L = (not out_data["passTrigMuMu"]) and out_data["passTrig2L_extMu"]
                 else:
-                    if self.dataset == 'DoubleEG':
-                        passTrigEE = out_data["passTrigElEl"]
-                    elif self.dataset == 'SingleElectron':
-                        passTrigEE = (not out_data["passTrigElEl"]) and out_data["passTrig2L_extEl"]
+                    # emu channel
+                    if self.dataset == 'MuonEG':
+                        passTrig2L = out_data["passTrigElMu"]
+                    elif self.dataset == 'SingleMuon':
+                        passTrig2L = (not out_data["passTrigElMu"]) and out_data["passTrig2L_extMu"]
+                    elif self.dataset in ('EGamma', 'SingleElectron'):
+                        passTrig2L = (not out_data["passTrigElMu"]) and (
+                            not out_data["passTrig2L_extMu"]) and out_data["passTrig2L_extEl"]
 
-                passTrigMM = False
-                if self.dataset == 'DoubleMuon':
-                    passTrigMM = out_data["passTrigMuMu"]
-                elif self.dataset == 'SingleMuon':
-                    passTrigMM = (not out_data["passTrigMuMu"]) and out_data["passTrig2L_extMu"]
-
-                passTrigEM = False
-                if self.dataset == 'MuonEG':
-                    passTrigEM = out_data["passTrigElMu"]
-                elif self.dataset == 'SingleMuon':
-                    passTrigEM = (not out_data["passTrigElMu"]) and out_data["passTrig2L_extMu"]
-                elif self.dataset in ('EGamma', 'SingleElectron'):
-                    passTrigEM = (not out_data["passTrigElMu"]) and (
-                        not out_data["passTrig2L_extMu"]) and out_data["passTrig2L_extEl"]
-
-                passTrig2L = passTrigEE or passTrigMM or passTrigEM
                 if not passTrig2L:
                     return False
 
@@ -545,6 +558,8 @@ class FlavTreeProducer(Module, object):
         return True
 
     def _fillEventInfo(self, event):
+        self.out.fillBranch("dataset", dataset_dict[self.dataset]
+                            if self.dataset in dataset_dict else 1 if self.dataset else 0)
         self.out.fillBranch("year", self._year)
         self.out.fillBranch("channel", self._chn_code)
         self.out.fillBranch("lumiwgt", lumi_dict[self._year])
@@ -723,19 +738,18 @@ class FlavTreeProducer(Module, object):
         event._allJets = Collection(event, "Jet")
         event.met = METObject(event, "MET")
 
-        if self._selectTriggers(event) is False:
-            return False
-
         self._selectLeptons(event)
         if self._preSelect(event) is False:
             return False
+        if self._selectTriggers(event) is False:
+            return False
+
         self._correctJetAndMET(event)
         self._cleanObjects(event)
         if self._selectEvent(event) is False:
             return False
         # fill
         self._fillEventInfo(event)
-        # self._fillGenMatch(event)
 
         return True
 
