@@ -10,9 +10,9 @@ from PhysicsTools.NanoAODTools.postprocessing.framework.eventloop import Module
 era_dict = {2015: '2016preVFP_UL', 2016: '2016postVFP_UL', 2017: '2017_UL', 2018: '2018_UL'}
 
 
-def debug(msg, activated=False):
-    if activated:
-        print(' > ', msg)
+# def debug(msg, activated=False):
+#     if activated:
+#         print(' > ', msg)
 
 
 class ElectronSFProducer(Module):
@@ -35,7 +35,7 @@ class ElectronSFProducer(Module):
 
         scale_factors = np.array([self.corr.evaluate(self.era.replace('_UL', ''), syst, wp, lep.etaSC, lep.pt)
                                   for syst in ('sf', 'sfup', 'sfdown')])
-        debug(f'Electron pt:{lep.pt:.1f}, etaSC:{lep.etaSC:.2f}, {wp}, SF({sf_type}) = {scale_factors} (nom, up, down)')
+        # debug(f'Electron pt:{lep.pt:.1f}, etaSC:{lep.etaSC:.2f}, {wp}, SF({sf_type}) = {scale_factors} (nom, up, down)')
         return scale_factors
 
     def beginFile(self, inputFile, outputFile, inputTree, wrappedOutputTree):
@@ -105,7 +105,7 @@ class MuonSFProducer(Module):
             key = f'NUM_{lep._wp_Iso}_DEN_TightIDandIPCut'
         scale_factors = np.array([self.corr[key].evaluate(self.era, abs(lep.eta), lep.pt, syst)
                                   for syst in ('sf', 'systup', 'systdown')])
-        debug(f'Muon pt:{lep.pt:.1f}, eta:{lep.eta:.2f}, wp:({lep._wp_ID}, {lep._wp_Iso}), SF({sf_type}) = {scale_factors} (nom, up, down)')
+        # debug(f'Muon pt:{lep.pt:.1f}, eta:{lep.eta:.2f}, wp:({lep._wp_ID}, {lep._wp_Iso}), SF({sf_type}) = {scale_factors} (nom, up, down)')
         return scale_factors
 
     def beginFile(self, inputFile, outputFile, inputTree, wrappedOutputTree):
@@ -181,11 +181,11 @@ class TriggerSF():
             if abs(lep.pdgId) == 13:
                 trigWgt = np.array([self.corr_mu.evaluate(self.era, abs(lep.eta), lep.pt, syst)
                                     for syst in ('sf', 'systup', 'systdown')])
-                debug(f'Muon pt:{lep.pt:.1f}, eta:{lep.eta:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
+                # debug(f'Muon pt:{lep.pt:.1f}, eta:{lep.eta:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
             elif abs(lep.pdgId) == 11:
                 trigWgt = np.array([self.corr_el.evaluate(syst, lep.pt, lep.etaSC)
                                     for syst in ('central', 'up', 'down')])
-                debug(f'Electron pt:{lep.pt:.1f}, etaSC:{lep.etaSC:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
+                # debug(f'Electron pt:{lep.pt:.1f}, etaSC:{lep.etaSC:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
 
         elif self.channel == '2L':
             electrons = []
@@ -206,8 +206,7 @@ class TriggerSF():
                 trigWgt = np.array([self.corr['MuElTriggerSF'].evaluate(syst, muons[0].pt, electrons[0].pt)
                                     for syst in ('central', 'up', 'down')])
 
-            debug(
-                f'Leading (pdgId:{event.selectedLeptons[0].pdgId}, pt:{event.selectedLeptons[0].pt:.1f}, eta:{event.selectedLeptons[0].eta:.2f}), Sub-Leading (pdgId:{event.selectedLeptons[1].pdgId}, pt:{event.selectedLeptons[1].pt:.1f}, eta:{event.selectedLeptons[1].eta:.2f}), SF(trigger) = {trigWgt} (nom, up, down)')
+            # debug(f'Leading (pdgId:{event.selectedLeptons[0].pdgId}, pt:{event.selectedLeptons[0].pt:.1f}, eta:{event.selectedLeptons[0].eta:.2f}), Sub-Leading (pdgId:{event.selectedLeptons[1].pdgId}, pt:{event.selectedLeptons[1].pt:.1f}, eta:{event.selectedLeptons[1].eta:.2f}), SF(trigger) = {trigWgt} (nom, up, down)')
 
         return trigWgt
 

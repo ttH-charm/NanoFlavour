@@ -79,6 +79,7 @@ def _process(args):
             ('PhysicsTools.NanoFlavour.producers.leptonSFProducer',
              'electronSF_{year},muonSF_{year}'.format(year=year)),
             ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),
+            ('PhysicsTools.NanoFlavour.producers.flavTagSFProducer', 'flavTagSF_' + year),
             ('PhysicsTools.NanoFlavour.producers.topPtWeightProducer', 'topPtWeight'),
             ('PhysicsTools.NanoAODTools.postprocessing.modules.common.puWeightProducer',
              'puWeight_UL2016' if year == '2015' else 'puWeight_UL%s' % year),

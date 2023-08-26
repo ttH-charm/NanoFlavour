@@ -10,9 +10,9 @@ from PhysicsTools.NanoAODTools.postprocessing.framework.eventloop import Module
 '''https://twiki.cern.ch/twiki/bin/view/CMS/PileupJetIDUL'''
 
 
-def debug(msg, activated=False):
-    if activated:
-        print(' > ', msg)
+# def debug(msg, activated=False):
+#     if activated:
+#         print(' > ', msg)
 
 
 class PileupJetIdSFProducer(Module):
@@ -41,7 +41,7 @@ class PileupJetIdSFProducer(Module):
 
         allJets = Collection(event, "Jet")
 
-        debug('------')
+        # debug('------')
         # nom, up, down
         systs = ('nom', 'up', 'down')
         eventWgt = np.ones(3)
@@ -49,15 +49,15 @@ class PileupJetIdSFProducer(Module):
             if not (j.pt > 25 and j.pt < 50 and abs(j.eta) < 2.4 and (j.jetId & 4)):
                 # pt, eta, tightIdLepVeto
                 continue
-            debug('jet pt:%.1f, eta:%.2f, genIdx:%d, pass puId:%s' % (j.pt, j.eta, j.genJetIdx, self.wpsel(j)))
+            # debug('jet pt:%.1f, eta:%.2f, genIdx:%d, pass puId:%s' % (j.pt, j.eta, j.genJetIdx, self.wpsel(j)))
             if not (j.genJetIdx >= 0 and self.wpsel(j)):
                 # apply only to jets that passes the PileUpJetID and geometrically matched
                 continue
             sf = np.array([self.corr.evaluate(j.eta, j.pt, syst, self.wp) for syst in systs])
-            debug('puId sf: %s' % str(sf))
+            # debug('puId sf: %s' % str(sf))
             eventWgt *= sf
         eventWgt = np.clip(eventWgt, 0, 2)
-        debug('event weight: %s' % str(eventWgt))
+        # debug('event weight: %s' % str(eventWgt))
 
         self.out.fillBranch('pileupJetIdWeight', eventWgt[0])
         self.out.fillBranch('pileupJetIdWeight_UP', eventWgt[1])
