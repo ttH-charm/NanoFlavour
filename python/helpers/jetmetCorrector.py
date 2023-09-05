@@ -101,7 +101,7 @@ class JetMETCorrector(object):
         self.jer = jer
         self.jmr = jmr
         self.met_unclustered = met_unclustered
-        self.correctMET = (jetType == 'AK4PFchs')  # FIXME
+        self.correctMET = (jetType == 'AK4PFchs' or jetType == 'AK4PFPuppi')  # FIXME
         self.smearMET = smearMET
         self.applyHEMUnc = applyHEMUnc
 
@@ -211,19 +211,6 @@ class JetMETCorrector(object):
         if self.jetSmearer is not None:
             self.jetSmearer.setSeed(seed)
 
-    def calcT1CorrEEFix(self, jet):
-        zero = np.zeros(2, dtype='float')
-        if self.excludeJetsForMET is None or not self.excludeJetsForMET(jet):
-            return zero
-        if jet.neEmEF + jet.chEmEF > 0.9:
-            return zero
-        rawP4 = jet.rawP4 * (1 - jet.muonSubtrFactor)
-        corrP4 = rawP4 * jet._jecFactor  # FIXME: _jecFactor and _jecFactorL1 here should be the JEC used in the NanoAOD production
-        if corrP4.pt() < 15:
-            return zero
-        delta = rawP4 * jet._jecFactorL1 - corrP4
-        return np.array([delta.px(), delta.py()])
-
     def calcT1Corr(self, jet):
         zero = np.zeros(2, dtype='float')
         if self.excludeJetsForMET is not None and self.excludeJetsForMET(jet):
@@ -274,7 +261,7 @@ class JetMETCorrector(object):
                     j.pt = j.rawP4.pt() * j._jecFactor
                     j.mass = j.rawP4.mass() * j._jecFactor
                 if met is not None:
-                    j._jecFactorL1 = jetCorrector.getCorrection(j, rho, 'L1FastJet')
+                    j._jecFactorL1 = 1. if 'Puppi' in self.jetType else jetCorrector.getCorrection(j, rho, 'L1FastJet')
 
             # set JER factor
             j._smearFactorNominal = 1
@@ -315,18 +302,22 @@ class JetMETCorrector(object):
             # last thing: calc MET type-1 correction
             j._t1MetDelta = None
             if met is not None:
-                j._t1MetDelta = self.calcT1Corr(j) + self.calcT1CorrEEFix(j)
+                j._t1MetDelta = self.calcT1Corr(j)
 
         # correct MET
         if met is not None:
             met_shift = sum([j._t1MetDelta for j in itertools.chain(jets, lowPtJets)])
             # MET unclustered energy
             if isMC and self.met_unclustered:
-                delta = np.array([met.MetUnclustEnUpDeltaX, met.MetUnclustEnUpDeltaY])
-            if self.met_unclustered == 'up':
-                met_shift += delta
-            elif self.met_unclustered == 'down':
-                met_shift -= delta
+                if self.jetType == 'AK4PFchs':
+                    delta = np.array([met.MetUnclustEnUpDeltaX, met.MetUnclustEnUpDeltaY])
+                elif self.jetType == 'AK4PFPuppi':
+                    delta_p4 = p4(met, pt='ptUnclusteredUp', phi='phiUnclusteredUp', eta=None, mass=None) - met.p4()
+                    delta = np.array([delta_p4.px(), delta_p4.py()])
+                if self.met_unclustered == 'up':
+                    met_shift += delta
+                elif self.met_unclustered == 'down':
+                    met_shift -= delta
             rawMetP4 = p4(rawMET, eta=None, mass=None)
             newMET = rawMetP4 + ROOT.Math.XYZTVector(met_shift[0], met_shift[1], 0, 0)
             if self.excludeJetsForMET is not None:

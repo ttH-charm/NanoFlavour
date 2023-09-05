@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(m
 
 flav_cfgname = 'flavTree_cfg.json'
 default_config = {'channel': None,
+                  'usePuppiJets': True,
                   'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': 'RegroupedV2_',
                   'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
                   'smearMET': False}
@@ -37,10 +38,10 @@ def _base_cut(year, channel):
     cut_dict = {
         # ttH(bb) analysis uses tight electron ID
         # 'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_cutBased==4',
-        'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_mvaFall17V2Iso_WP90'
+        'ele_cut': 'Electron_pt>15 && abs(Electron_eta)<2.4 && Electron_mvaIso_WP90'
                    ' && (abs(Electron_eta+Electron_deltaEtaSC)<1.4442 || abs(Electron_eta+Electron_deltaEtaSC)>1.5560)',
         'mu_cut': 'Muon_pt>10 && abs(Muon_eta)<2.4 && Muon_tightId && Muon_pfRelIso04_all<0.25',
-        'tight_ele_cut': f'Electron_pt>{ePtCut} && Electron_mvaFall17V2Iso_WP80',
+        'tight_ele_cut': f'Electron_pt>{ePtCut} && Electron_mvaIso_WP80',
         'tight_mu_cut': 'Muon_pfRelIso04_all<0.15',
         'jet_count': 'Sum$(Jet_pt>15 && abs(Jet_eta)<2.4 && (Jet_jetId & 4))',
     }
@@ -78,11 +79,14 @@ def _process(args):
         args.imports.extend([
             ('PhysicsTools.NanoFlavour.producers.leptonSFProducer',
              'electronSF_{year},muonSF_{year}'.format(year=year)),
-            ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),
             ('PhysicsTools.NanoFlavour.producers.flavTagSFProducer', 'flavTagSF_' + year),
             ('PhysicsTools.NanoFlavour.producers.topPtWeightProducer', 'topPtWeight'),
             ('PhysicsTools.NanoAODTools.postprocessing.modules.common.puWeightProducer',
              'puWeight_UL2016' if year == '2015' else 'puWeight_UL%s' % year),
+        ])
+    if not default_config['usePuppiJets']:
+        args.imports.extend([
+            ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),
         ])
 
     # data, or just nominal MC

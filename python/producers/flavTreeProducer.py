@@ -46,6 +46,7 @@ class FlavTreeProducer(Module, object):
         self._channel = channel
         self._chn_code = channel_dict[channel]
         self._year = int(kwargs['year'])
+        self._usePuppiJets = kwargs['usePuppiJets']
         self._jmeSysts = {'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': '',
                           'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
                           'smearMET': False}
@@ -63,7 +64,8 @@ class FlavTreeProducer(Module, object):
                     self._channel, str(self._year), str(self._jmeSysts), str(self._opts))
 
         if self._needsJMECorr:
-            self.jetmetCorr = JetMETCorrector(year=self._year, jetType="AK4PFchs", **self._jmeSysts)
+            self.jetmetCorr = JetMETCorrector(
+                year=self._year, jetType="AK4PFPuppi" if self._usePuppiJets else "AK4PFchs", **self._jmeSysts)
 
         self.muonCorr = MuonScaleResCorrector(year=self._year, corr=self._opts['muon_scale'])
 
@@ -102,11 +104,14 @@ class FlavTreeProducer(Module, object):
                 0: '(pn_b_plus_c<=0.1)',
             }
 
-        # https://twiki.cern.ch/twiki/bin/view/CMS/PileupJetIDUL
-        # self.puID_WP = {2015: -1, 2016: -1, 2017: -1, 2018: -1}[self._year]  # None
-        # self.puID_WP = {2015: 1, 2016: 1, 2017: 4, 2018: 4}[self._year]  # L
-        # self.puID_WP = {2015: 3, 2016: 3, 2017: 6, 2018: 6}[self._year]  # M
-        self.puID_WP = {2015: 7, 2016: 7, 2017: 7, 2018: 7}[self._year]  # T
+        if self._usePuppiJets:
+            self.puID_WP = None
+        else:
+            # https://twiki.cern.ch/twiki/bin/view/CMS/PileupJetIDUL
+            # self.puID_WP = {2015: -1, 2016: -1, 2017: -1, 2018: -1}[self._year]  # None
+            # self.puID_WP = {2015: 1, 2016: 1, 2017: 4, 2018: 4}[self._year]  # L
+            # self.puID_WP = {2015: 3, 2016: 3, 2017: 6, 2018: 6}[self._year]  # M
+            self.puID_WP = {2015: 7, 2016: 7, 2017: 7, 2018: 7}[self._year]  # T
 
         self._trigSF = TriggerSF(self._year, '1L' if self._channel in ('WJets', 'TT1L') else '2L')
 
@@ -226,7 +231,6 @@ class FlavTreeProducer(Module, object):
         self.out.branch("ak4_phi", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_mass", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_tag", "I", 20, lenVar="n_ak4")
-        self.out.branch("ak4_puId", "I", 20, lenVar="n_ak4")
         self.out.branch("ak4_mu_ptfrac", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_mu_plus_nem", "F", 20, lenVar="n_ak4")
         self.out.branch("ak4_mu_pdgId", "I", 20, lenVar="n_ak4")
@@ -234,6 +238,8 @@ class FlavTreeProducer(Module, object):
             self.out.branch("ak4_hflav", "I", 20, lenVar="n_ak4")
             self.out.branch("ak4_pflav", "I", 20, lenVar="n_ak4")
             self.out.branch("ak4_genmatch", "I", 20, lenVar="n_ak4")
+            self.out.branch("ak4_nBHadrons", "I", 20, lenVar="n_ak4")
+            self.out.branch("ak4_nCHadrons", "I", 20, lenVar="n_ak4")
 
         # self.out.branch("ak4_bdisc", "F", 20, lenVar="n_ak4")
         # self.out.branch("ak4_cvbdisc", "F", 20, lenVar="n_ak4")
@@ -258,11 +264,14 @@ class FlavTreeProducer(Module, object):
             rho = getattr(event, self.rho_branch_name)
             # correct AK4 jets and MET
             self.jetmetCorr.setSeed(rndSeed(event, event._allJets))
-            self.jetmetCorr.correctJetAndMET(jets=event._allJets, lowPtJets=Collection(event, "CorrT1METJet"),
-                                             met=event.met, rawMET=METObject(event, "RawMET"),
-                                             defaultMET=METObject(event, "MET"),
-                                             rho=rho, genjets=Collection(event, 'GenJet') if self.isMC else None,
-                                             isMC=self.isMC, runNumber=event.run)
+            self.jetmetCorr.correctJetAndMET(
+                jets=event._allJets,
+                lowPtJets=Collection(event, "CorrT1METJet"),
+                met=event.met,
+                rawMET=METObject(event, "RawPuppiMET") if self._usePuppiJets else METObject(event, "RawMET"),
+                defaultMET=METObject(event, "PuppiMET") if self._usePuppiJets else METObject(event, "MET"),
+                rho=rho, genjets=Collection(event, 'GenJet') if self.isMC else None,
+                isMC=self.isMC, runNumber=event.run)
             event._allJets = sorted(event._allJets, key=lambda x: x.pt, reverse=True)  # sort by pt after updating
 
     def _selectLeptons(self, event):
@@ -278,7 +287,7 @@ class FlavTreeProducer(Module, object):
             # NOTE: try mvaFall17V2Iso_WP90
             if 1.4442 <= abs(el.etaSC) <= 1.5560:
                 continue
-            if el.pt > 15 and abs(el.eta) < 2.4 and el.mvaFall17V2Iso_WP90:
+            if el.pt > 15 and abs(el.eta) < 2.4 and el.mvaIso_WP90:
                 el._wp_ID = 'wp90iso'
                 event.looseLeptons.append(el)
 
@@ -312,7 +321,7 @@ class FlavTreeProducer(Module, object):
                 # ttH(bb) analysis uses tight electron ID
                 # if lep.pt > ePtCut and lep.cutBased == 4:
                 # NOTE: try mvaFall17V2Iso_WP80
-                if lep.pt > ePtCut and lep.mvaFall17V2Iso_WP80:
+                if lep.pt > ePtCut and lep.mvaIso_WP80:
                     lep._wp_ID = 'wp80iso'
                     event.selectedLeptons.append(lep)
             if len(event.selectedLeptons) != 1:
@@ -353,9 +362,12 @@ class FlavTreeProducer(Module, object):
     def _cleanObjects(self, event):
         event.ak4jets = []
         for j in event._allJets:
-            if not (j.pt > 25 and abs(j.eta) < 2.4 and (j.jetId & 4) and (j.pt > 50 or j.puId >= self.puID_WP)):
+            if not (j.pt > 25 and abs(j.eta) < 2.4 and (j.jetId & 4)):
                 # NOTE: ttH(bb) uses jets w/ pT > 30 GeV, loose PU Id
                 # pt, eta, tightIdLepVeto, loose PU ID
+                continue
+            if not self._usePuppiJets and not (j.pt > 50 or j.puId >= self.puID_WP):
+                # apply jet puId only for CHS jets
                 continue
             if closest(j, event.looseLeptons)[1] < 0.4:
                 continue
@@ -653,13 +665,14 @@ class FlavTreeProducer(Module, object):
         ak4_phi = []
         ak4_mass = []
         ak4_tag = []
-        ak4_puId = []
         ak4_mu_ptfrac = []
         ak4_mu_plus_nem = []
         ak4_mu_pdgId = []
         ak4_hflav = []
         ak4_pflav = []
         ak4_genmatch = []
+        ak4_nBHadrons = []
+        ak4_nCHadrons = []
         # ak4_bdisc = []
         # ak4_cvbdisc = []
         # ak4_cvldisc = []
@@ -678,7 +691,6 @@ class FlavTreeProducer(Module, object):
             ak4_phi.append(j.phi)
             ak4_mass.append(j.mass)
             ak4_tag.append(j.tag)
-            ak4_puId.append(j.puId)
             ak4_mu_ptfrac.append(j.mu.pt / j.pt if j.mu else 0)
             ak4_mu_plus_nem.append(j.muEF + j.neEmEF)
             ak4_mu_pdgId.append(j.mu.pdgId if j.mu else 0)
@@ -686,6 +698,12 @@ class FlavTreeProducer(Module, object):
                 ak4_hflav.append(j.hadronFlavour)
                 ak4_pflav.append(j.partonFlavour)
                 ak4_genmatch.append(j.genJetIdx >= 0)
+                try:
+                    ak4_nBHadrons.append(j.nBHadrons)
+                    ak4_nCHadrons.append(j.nCHadrons)
+                except RuntimeError:
+                    ak4_nBHadrons.append(-1)
+                    ak4_nCHadrons.append(-1)
 
             # ak4_bdisc.append(j.btagDeepFlavB)
             # ak4_cvbdisc.append(j.btagDeepFlavCvB)
@@ -705,7 +723,6 @@ class FlavTreeProducer(Module, object):
         self.out.fillBranch("ak4_phi", ak4_phi)
         self.out.fillBranch("ak4_mass", ak4_mass)
         self.out.fillBranch("ak4_tag", ak4_tag)
-        self.out.fillBranch("ak4_puId", ak4_puId)
         self.out.fillBranch("ak4_mu_ptfrac", ak4_mu_ptfrac)
         self.out.fillBranch("ak4_mu_plus_nem", ak4_mu_plus_nem)
         self.out.fillBranch("ak4_mu_pdgId", ak4_mu_pdgId)
@@ -713,6 +730,8 @@ class FlavTreeProducer(Module, object):
             self.out.fillBranch("ak4_hflav", ak4_hflav)
             self.out.fillBranch("ak4_pflav", ak4_pflav)
             self.out.fillBranch("ak4_genmatch", ak4_genmatch)
+            self.out.fillBranch("ak4_nBHadrons", ak4_nBHadrons)
+            self.out.fillBranch("ak4_nCHadrons", ak4_nCHadrons)
 
         self.out.fillBranch("n_mutag", sum(0 < x < 0.5 for x in ak4_mu_ptfrac))
 
@@ -736,7 +755,7 @@ class FlavTreeProducer(Module, object):
 
         event.idx = event._entry if event._tree._entrylist is None else event._tree._entrylist.GetEntry(event._entry)
         event._allJets = Collection(event, "Jet")
-        event.met = METObject(event, "MET")
+        event.met = METObject(event, "PuppiMET") if self._usePuppiJets else METObject(event, "MET")
 
         self._selectLeptons(event)
         if self._preSelect(event) is False:
