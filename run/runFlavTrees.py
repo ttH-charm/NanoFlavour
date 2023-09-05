@@ -86,7 +86,7 @@ def _process(args):
         ])
 
     # data, or just nominal MC
-    if args.type == 'data' or not args.run_syst:
+    if args.type == 'data' or args.type == 'mc':
         args.cut = _base_cut(year, channel)
         cfg = copy.deepcopy(default_config)
         if args.type == 'data':
@@ -102,15 +102,26 @@ def _process(args):
     # MC for syst.
     if args.type == 'mc' and args.run_syst:
 
-        # nominal w/ PDF/Scale weights
-        logging.info('Start making nominal trees with PDF/scale weights...')
-        syst_name = 'LHEWeight'
-        opts = copy.deepcopy(args)
-        cfg = copy.deepcopy(default_config)
-        opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
-        opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
-        opts.branchsel_out = 'keep_and_drop_output_LHEweights.txt'
-        run(opts, configs={flav_cfgname: cfg})
+        # # nominal w/ PDF/Scale weights
+        # logging.info('Start making nominal trees with PDF/scale weights...')
+        # syst_name = 'LHEWeight'
+        # opts = copy.deepcopy(args)
+        # cfg = copy.deepcopy(default_config)
+        # opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+        # opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+        # opts.branchsel_out = 'keep_and_drop_output_LHEweights.txt'
+        # run(opts, configs={flav_cfgname: cfg})
+
+        # JES (Total) up/down
+        for variation in ['up', 'down']:
+            syst_name = 'jes_%s' % variation
+            logging.info('Start making %s trees...' % syst_name)
+            opts = copy.deepcopy(args)
+            cfg = copy.deepcopy(default_config)
+            cfg['jes'] = variation
+            opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+            opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+            run(opts, configs={flav_cfgname: cfg})
 
         # JER up/down
         for variation in ['up', 'down']:
@@ -124,29 +135,28 @@ def _process(args):
             run(opts, configs={flav_cfgname: cfg})
 
         # MET unclustEn up/down
-        if channel != '2L':
-            for variation in ['up', 'down']:
-                syst_name = 'met_%s' % variation
-                logging.info('Start making %s trees...' % syst_name)
-                opts = copy.deepcopy(args)
-                cfg = copy.deepcopy(default_config)
-                cfg['met_unclustered'] = variation
-                opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
-                opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
-                run(opts, configs={flav_cfgname: cfg})
+        for variation in ['up', 'down']:
+            syst_name = 'met_%s' % variation
+            logging.info('Start making %s trees...' % syst_name)
+            opts = copy.deepcopy(args)
+            cfg = copy.deepcopy(default_config)
+            cfg['met_unclustered'] = variation
+            opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+            opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+            run(opts, configs={flav_cfgname: cfg})
 
-        # JES sources
-        for source in jes_uncertainty_sources[year]:
-            for variation in ['up', 'down']:
-                syst_name = 'jes_%s_%s' % (source, variation)
-                logging.info('Start making %s trees...' % syst_name)
-                opts = copy.deepcopy(args)
-                cfg = copy.deepcopy(default_config)
-                cfg['jes_source'] = source
-                cfg['jes'] = variation
-                opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
-                opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
-                run(opts, configs={flav_cfgname: cfg})
+        # # JES sources
+        # for source in jes_uncertainty_sources[year]:
+        #     for variation in ['up', 'down']:
+        #         syst_name = 'jes_%s_%s' % (source, variation)
+        #         logging.info('Start making %s trees...' % syst_name)
+        #         opts = copy.deepcopy(args)
+        #         cfg = copy.deepcopy(default_config)
+        #         cfg['jes_source'] = source
+        #         cfg['jes'] = variation
+        #         opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+        #         opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+        #         run(opts, configs={flav_cfgname: cfg})
 
     if args.type == 'mc' and (args.run_syst or args.run_hem_syst):
         # HEM15/16 unc
