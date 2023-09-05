@@ -144,6 +144,16 @@ def add_weight_branch(file, xsec, lumi=1000., treename='Events', wgtbranch='xsec
         logging.info('LHEPdfWeightNorm: ' + str(pdf_weight_norm_buff))
         _fill_const_branch(tree, 'LHEPdfWeightNorm', pdf_weight_norm_buff, lenVar='nLHEPdfWeight')
 
+    # fill PS weight re-normalization factors
+    if tree.GetBranch('PSWeight') and run_tree.GetBranch('PSSumw'):
+        run_tree.GetEntry(0)
+        nPSWeights = run_tree.nPSSumw
+        ps_weight_norm_buff = array('f',
+                                    [sumwgts / _get_sum(run_tree, 'PSSumw[%d]*genEventSumw' % i)
+                                     for i in range(nPSWeights)])
+        logging.info('PSWeightNorm: ' + str(ps_weight_norm_buff))
+        _fill_const_branch(tree, 'PSWeightNorm', ps_weight_norm_buff, lenVar='nPSWeight')
+
     tree.Write(treename, ROOT.TObject.kOverwrite)
     f.Close()
 

@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import os
+import ast
 import copy
 import time
 
@@ -84,10 +85,10 @@ def _process(args):
             ('PhysicsTools.NanoAODTools.postprocessing.modules.common.puWeightProducer',
              'puWeight_UL2016' if year == '2015' else 'puWeight_UL%s' % year),
         ])
-    if not default_config['usePuppiJets']:
-        args.imports.extend([
-            ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),
-        ])
+        if not default_config['usePuppiJets']:
+            args.imports.extend([
+                ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),
+            ])
 
     # data, or just nominal MC
     if args.type == 'data' or args.type == 'mc':
@@ -252,6 +253,10 @@ def main():
         help='To be used together with `--post --batch` to keep the postprocessing waiting until all jobs finished.'
         ' The value is the number of seconds to wait between two trials.')
 
+    parser.add_argument('--po', '--producer-option', dest='producer_option',
+                        nargs=2, action='append', default=[],
+                        help='options to pass to the producer, e.g., `--po apply_tight_selection False`')
+
     args = parser.parse_args()
 
     if args.wait > 0:
@@ -261,6 +266,11 @@ def main():
                 print('... waiting ...')
                 time.sleep(args.wait)
     else:
+        producer_options = {k: ast.literal_eval(v) for k, v in args.producer_option}
+        if len(producer_options):
+            logging.info(f'Updating default_config with options: {producer_options}')
+            default_config.update(producer_options)
+
         _main(args)
 
 
