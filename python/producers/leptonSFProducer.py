@@ -17,11 +17,12 @@ era_dict = {2015: '2016preVFP_UL', 2016: '2016postVFP_UL', 2017: '2017_UL', 2018
 
 class ElectronSFProducer(Module):
 
-    def __init__(self, year):
+    def __init__(self, year, split_weights=False):
         self.year = year
         self.era = era_dict[self.year]
         correction_file = f'/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/EGM/{self.era}/electron.json.gz'
         self.corr = correctionlib.CorrectionSet.from_file(correction_file)['UL-Electron-ID-SF']
+        self.split_weights = split_weights
 
     def get_sf(self, sf_type, lep):
         if abs(lep.pdgId) != 11:
@@ -43,17 +44,18 @@ class ElectronSFProducer(Module):
         if self.isMC:
             self.out = wrappedOutputTree
 
-            self.out.branch('elRecoWeight', "F")
-            self.out.branch('elRecoWeight_UP', "F")
-            self.out.branch('elRecoWeight_DOWN', "F")
+            if self.split_weights:
+                self.out.branch('elRecoWeight', "F")
+                self.out.branch('elRecoWeight_UP', "F")
+                self.out.branch('elRecoWeight_DOWN', "F")
 
-            self.out.branch('elIDWeight', "F")
-            self.out.branch('elIDWeight_UP', "F")
-            self.out.branch('elIDWeight_DOWN', "F")
-
-            self.out.branch('elEffWeight', "F")
-            self.out.branch('elEffWeight_UP', "F")
-            self.out.branch('elEffWeight_DOWN', "F")
+                self.out.branch('elIDWeight', "F")
+                self.out.branch('elIDWeight_UP', "F")
+                self.out.branch('elIDWeight_DOWN', "F")
+            else:
+                self.out.branch('elEffWeight', "F")
+                self.out.branch('elEffWeight_UP', "F")
+                self.out.branch('elEffWeight_DOWN', "F")
 
     def analyze(self, event):
         """process event, return True (go to next module) or False (fail, go to next event)"""
@@ -71,29 +73,31 @@ class ElectronSFProducer(Module):
             wgtReco *= self.get_sf('Reco', lep)
             wgtID *= self.get_sf('ID', lep)
 
-        self.out.fillBranch('elRecoWeight', wgtReco[0])
-        self.out.fillBranch('elRecoWeight_UP', wgtReco[1])
-        self.out.fillBranch('elRecoWeight_DOWN', wgtReco[2])
+        if self.split_weights:
+            self.out.fillBranch('elRecoWeight', wgtReco[0])
+            self.out.fillBranch('elRecoWeight_UP', wgtReco[1])
+            self.out.fillBranch('elRecoWeight_DOWN', wgtReco[2])
 
-        self.out.fillBranch('elIDWeight', wgtID[0])
-        self.out.fillBranch('elIDWeight_UP', wgtID[1])
-        self.out.fillBranch('elIDWeight_DOWN', wgtID[2])
-
-        eventWgt = wgtReco * wgtID
-        self.out.fillBranch('elEffWeight', eventWgt[0])
-        self.out.fillBranch('elEffWeight_UP', eventWgt[1])
-        self.out.fillBranch('elEffWeight_DOWN', eventWgt[2])
+            self.out.fillBranch('elIDWeight', wgtID[0])
+            self.out.fillBranch('elIDWeight_UP', wgtID[1])
+            self.out.fillBranch('elIDWeight_DOWN', wgtID[2])
+        else:
+            eventWgt = wgtReco * wgtID
+            self.out.fillBranch('elEffWeight', eventWgt[0])
+            self.out.fillBranch('elEffWeight_UP', eventWgt[1])
+            self.out.fillBranch('elEffWeight_DOWN', eventWgt[2])
 
         return True
 
 
 class MuonSFProducer(Module):
 
-    def __init__(self, year):
+    def __init__(self, year, split_weights=False):
         self.year = year
         self.era = era_dict[self.year]
         correction_file = f'/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/MUO/{self.era}/muon_Z.json.gz'
         self.corr = correctionlib.CorrectionSet.from_file(correction_file)
+        self.split_weights = split_weights
 
     def get_sf(self, sf_type, lep):
         if abs(lep.pdgId) != 13:
@@ -113,17 +117,18 @@ class MuonSFProducer(Module):
         if self.isMC:
             self.out = wrappedOutputTree
 
-            self.out.branch('muIDWeight', "F")
-            self.out.branch('muIDWeight_UP', "F")
-            self.out.branch('muIDWeight_DOWN', "F")
+            if self.split_weights:
+                self.out.branch('muIDWeight', "F")
+                self.out.branch('muIDWeight_UP', "F")
+                self.out.branch('muIDWeight_DOWN', "F")
 
-            self.out.branch('muIsoWeight', "F")
-            self.out.branch('muIsoWeight_UP', "F")
-            self.out.branch('muIsoWeight_DOWN', "F")
-
-            self.out.branch('muEffWeight', "F")
-            self.out.branch('muEffWeight_UP', "F")
-            self.out.branch('muEffWeight_DOWN', "F")
+                self.out.branch('muIsoWeight', "F")
+                self.out.branch('muIsoWeight_UP', "F")
+                self.out.branch('muIsoWeight_DOWN', "F")
+            else:
+                self.out.branch('muEffWeight', "F")
+                self.out.branch('muEffWeight_UP', "F")
+                self.out.branch('muEffWeight_DOWN', "F")
 
     def analyze(self, event):
         """process event, return True (go to next module) or False (fail, go to next event)"""
@@ -141,18 +146,19 @@ class MuonSFProducer(Module):
             wgtID *= self.get_sf('ID', lep)
             wgtIso *= self.get_sf('Iso', lep)
 
-        self.out.fillBranch('muIDWeight', wgtID[0])
-        self.out.fillBranch('muIDWeight_UP', wgtID[1])
-        self.out.fillBranch('muIDWeight_DOWN', wgtID[2])
+        if self.split_weights:
+            self.out.fillBranch('muIDWeight', wgtID[0])
+            self.out.fillBranch('muIDWeight_UP', wgtID[1])
+            self.out.fillBranch('muIDWeight_DOWN', wgtID[2])
 
-        self.out.fillBranch('muIsoWeight', wgtIso[0])
-        self.out.fillBranch('muIsoWeight_UP', wgtIso[1])
-        self.out.fillBranch('muIsoWeight_DOWN', wgtIso[2])
-
-        eventWgt = wgtID * wgtIso
-        self.out.fillBranch('muEffWeight', eventWgt[0])
-        self.out.fillBranch('muEffWeight_UP', eventWgt[1])
-        self.out.fillBranch('muEffWeight_DOWN', eventWgt[2])
+            self.out.fillBranch('muIsoWeight', wgtIso[0])
+            self.out.fillBranch('muIsoWeight_UP', wgtIso[1])
+            self.out.fillBranch('muIsoWeight_DOWN', wgtIso[2])
+        else:
+            eventWgt = wgtID * wgtIso
+            self.out.fillBranch('muEffWeight', eventWgt[0])
+            self.out.fillBranch('muEffWeight_UP', eventWgt[1])
+            self.out.fillBranch('muEffWeight_DOWN', eventWgt[2])
 
         return True
 

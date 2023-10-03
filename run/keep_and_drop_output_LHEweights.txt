@@ -3,6 +3,7 @@ dropmatch n?[A-Z][a-zA-Z0-9]{1,}.+
 dropmatch n?boostedTau_.+
 drop fixedGridRho*
 drop btagWeight_*
+drop bunchCrossing
 # event info
 keep run
 keep luminosityBlock
@@ -33,7 +34,11 @@ keep PV_npvs
 # genweight
 keep genWeight
 keep LHE_Vpt
-keep genTtbarId
+# keep LHE_HT
+# keep LHE_Njets
+# keep LHE_NpNLO
+# keep nGenJet
+# keep genTtbarId
 # PDF/Scale weights
 keep *LHE*Weight
 keep *PSWeight

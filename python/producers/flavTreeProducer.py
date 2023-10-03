@@ -50,7 +50,7 @@ class FlavTreeProducer(Module, object):
         self._jmeSysts = {'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': '',
                           'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
                           'smearMET': False}
-        self._opts = {'muon_scale': 'nominal'}
+        self._opts = {'muon_scale': 'nominal', 'fillJetTaggingScores': False, 'apply_tight_selection': True}
         for k in kwargs:
             if k in self._jmeSysts:
                 self._jmeSysts[k] = kwargs[k]
@@ -197,12 +197,12 @@ class FlavTreeProducer(Module, object):
         self.out.branch("lep1_miniIso", "F")
         self.out.branch("lep1_pdgId", "I")
 
-        self.out.branch("lep1_dxy", "F")
-        self.out.branch("lep1_dxyErr", "F")
-        self.out.branch("lep1_dz", "F")
-        self.out.branch("lep1_dzErr", "F")
-        self.out.branch("lep1_ip3d", "F")
-        self.out.branch("lep1_sip3d", "F")
+        # self.out.branch("lep1_dxy", "F")
+        # self.out.branch("lep1_dxyErr", "F")
+        # self.out.branch("lep1_dz", "F")
+        # self.out.branch("lep1_dzErr", "F")
+        # self.out.branch("lep1_ip3d", "F")
+        # self.out.branch("lep1_sip3d", "F")
 
         if self._channel in ('ZJets', 'TT2L'):
             self.out.branch("lep2_pt", "F")
@@ -215,11 +215,7 @@ class FlavTreeProducer(Module, object):
         if self._channel in ('WJets', 'TT1L'):
             self.out.branch("dphi_lep_met", "F")
             self.out.branch("mt_lep_met", "F")
-            self.out.branch("min_dr_lep_ak4", "F")
-            self.out.branch("min_deta_lep_ak4", "F")
-            self.out.branch("min_dphi_lep_ak4", "F")
         elif self._channel in ('ZJets', 'TT2L'):
-            self.out.branch("deltaR_ll", "F")
             self.out.branch("mt_ll_met", "F")
 
         # ak4 jets
@@ -241,18 +237,19 @@ class FlavTreeProducer(Module, object):
             self.out.branch("ak4_nBHadrons", "I", 20, lenVar="n_ak4")
             self.out.branch("ak4_nCHadrons", "I", 20, lenVar="n_ak4")
 
-        # self.out.branch("ak4_bdisc", "F", 20, lenVar="n_ak4")
-        # self.out.branch("ak4_cvbdisc", "F", 20, lenVar="n_ak4")
-        # self.out.branch("ak4_cvldisc", "F", 20, lenVar="n_ak4")
-        if self.hasParticleNetAK4:
-            self.out.branch("ak4_prob_b", "F", 20, lenVar="n_ak4")
-            self.out.branch("ak4_prob_bb", "F", 20, lenVar="n_ak4")
-            self.out.branch("ak4_prob_c", "F", 20, lenVar="n_ak4")
-            self.out.branch("ak4_prob_cc", "F", 20, lenVar="n_ak4")
-            self.out.branch("ak4_prob_uds", "F", 20, lenVar="n_ak4")
-            self.out.branch("ak4_prob_g", "F", 20, lenVar="n_ak4")
-            self.out.branch("ak4_prob_pu", "F", 20, lenVar="n_ak4")
-            self.out.branch("ak4_prob_undef", "F", 20, lenVar="n_ak4")
+        if self._opts['fillJetTaggingScores']:
+            # self.out.branch("ak4_bdisc", "F", 20, lenVar="n_ak4")
+            # self.out.branch("ak4_cvbdisc", "F", 20, lenVar="n_ak4")
+            # self.out.branch("ak4_cvldisc", "F", 20, lenVar="n_ak4")
+            if self.hasParticleNetAK4:
+                self.out.branch("ak4_prob_b", "F", 20, lenVar="n_ak4")
+                self.out.branch("ak4_prob_bb", "F", 20, lenVar="n_ak4")
+                self.out.branch("ak4_prob_c", "F", 20, lenVar="n_ak4")
+                self.out.branch("ak4_prob_cc", "F", 20, lenVar="n_ak4")
+                self.out.branch("ak4_prob_uds", "F", 20, lenVar="n_ak4")
+                self.out.branch("ak4_prob_g", "F", 20, lenVar="n_ak4")
+                self.out.branch("ak4_prob_pu", "F", 20, lenVar="n_ak4")
+                self.out.branch("ak4_prob_undef", "F", 20, lenVar="n_ak4")
 
         self.out.branch("ht", "F")
 
@@ -329,10 +326,13 @@ class FlavTreeProducer(Module, object):
             # reject DY(-> mu mu)
             if abs(lep.pdgId) == 13:
                 for soft_mu in event.soft_muon_dict.values():
-                    mll = sumP4(lep, soft_mu).M()
+                    mll = sumP4(lep, soft_mu).mass()
                     if mll < 12 or (81 < mll < 101):
                         return False
-
+            if self._channel == 'WJets':
+                if self._opts['apply_tight_selection']:
+                    if len(event.soft_muon_dict) == 0:
+                        return False
         elif self._channel in ('ZJets', 'TT2L'):
             if len(event.looseLeptons) != 2:
                 return False
@@ -354,7 +354,7 @@ class FlavTreeProducer(Module, object):
                     # (opposite-sign) same-flavor
                     return False
                 Vboson = sumP4(event.selectedLeptons[0], event.selectedLeptons[1])
-                if Vboson.M() < 81 or Vboson.M() > 101:
+                if Vboson.mass() < 81 or Vboson.mass() > 101:
                     return False
 
         return True
@@ -429,32 +429,61 @@ class FlavTreeProducer(Module, object):
             # 1 <= njets <= 2
             if not (1 <= len(event.ak4jets) <= 2):
                 return False
+            if self._opts['apply_tight_selection']:
+                # n_ak4==1 && ak4_pt[0]/v_pt>0.5 && ak4_pt[0]/v_pt<2 && absDeltaPhi(v_phi, ak4_phi[0])>2
+                if len(event.ak4jets) != 1:
+                    return False
+                if event.Vboson.pt() < 25:
+                    return False
+                if not (0.75 < event.ak4jets[0].pt / event.Vboson.pt() < 1.25):
+                    return False
+                if abs(deltaPhi(event.ak4jets[0].phi, event.Vboson.phi())) < 2:
+                    return False
         elif self._channel == 'WJets':
             # # 1 <= njets <= 2
             # if not (1 <= len(event.ak4jets) <= 2):
             # njets == 1
             if len(event.ak4jets) != 1:
                 return False
-            if event.met.pt < 50:
-                return False
-            if transverseMass(event.selectedLeptons[0], event.met) < 50:
-                return False
-            if abs(deltaPhi(event.met.phi, event.TkMET_phi)) > 1:
-                return False
-            if abs(deltaPhi(event.met, event.ak4jets[0])) < 1:
-                return False
+            if self._opts['apply_tight_selection']:
+                # n_ak4==1 && met>30 && mt_lep_met>40 && mt_lep_met<120 && v_pt>30
+                # && dphi_met_tkmet<1 && min_dphi_met_jet>1 "
+                # && absDeltaPhi(v_phi, ak4_phi[0])>2 && ak4_pt[0]/v_pt>0.5 && ak4_pt[0]/v_pt<2
+                if event.met.pt < 30:
+                    return False
+                if event.Vboson.pt() < 30:
+                    return False
+                if not (40 < transverseMass(event.selectedLeptons[0], event.met) < 120):
+                    return False
+                if abs(deltaPhi(event.met.phi, event.TkMET_phi)) > 1:
+                    return False
+                if abs(deltaPhi(event.met, event.ak4jets[0])) < 1:
+                    return False
+                if not (0.5 < event.ak4jets[0].pt / event.Vboson.pt() < 2):
+                    return False
+                if abs(deltaPhi(event.ak4jets[0].phi, event.Vboson.phi())) < 2:
+                    return False
         elif self._channel == 'TT1L':
             # 3 <= njets <= 4
             if not (3 <= len(event.ak4jets) <= 4):
                 return False
-            if event.met.pt < 20:
+            if not (event.ak4jets[0].tag >= 50 or event.ak4jets[1].tag >= 50):
                 return False
+            if self._opts['apply_tight_selection']:
+                if event.met.pt < 20:
+                    return False
         elif self._channel == 'TT2L':
             # 1 <= njets <= 2 ?? or ==2?
             if not (1 <= len(event.ak4jets) <= 2):
                 return False
-            if event.met.pt < 40:
-                return False
+            if self._opts['apply_tight_selection']:
+                # mt_ll_met>90 && n_ak4==2
+                if len(event.ak4jets) != 2:
+                    return False
+                if event.met.pt < 20:
+                    return False
+                if transverseMass(event.Vboson, event.met) < 100:
+                    return False
 
         # return True if passes selection
         return True
@@ -615,10 +644,10 @@ class FlavTreeProducer(Module, object):
         self.out.fillBranch("min_dphi_met_jet", minValue([abs(deltaPhi(event.met, j)) for j in event.ak4jets]))
 
         # V boson
-        self.out.fillBranch("v_pt", event.Vboson.Pt())
-        self.out.fillBranch("v_eta", event.Vboson.Eta())
-        self.out.fillBranch("v_phi", event.Vboson.Phi())
-        self.out.fillBranch("v_mass", event.Vboson.M())
+        self.out.fillBranch("v_pt", event.Vboson.pt())
+        self.out.fillBranch("v_eta", event.Vboson.eta())
+        self.out.fillBranch("v_phi", event.Vboson.phi())
+        self.out.fillBranch("v_mass", event.Vboson.mass())
 
         # leptons
         self.out.fillBranch("lep1_pt", event.selectedLeptons[0].pt)
@@ -630,12 +659,12 @@ class FlavTreeProducer(Module, object):
         self.out.fillBranch("lep1_miniIso", event.selectedLeptons[0].miniPFRelIso_all)
         self.out.fillBranch("lep1_pdgId", event.selectedLeptons[0].pdgId)
 
-        self.out.fillBranch("lep1_dxy", event.selectedLeptons[0].dxy)
-        self.out.fillBranch("lep1_dxyErr", event.selectedLeptons[0].dxyErr)
-        self.out.fillBranch("lep1_dz", event.selectedLeptons[0].dz)
-        self.out.fillBranch("lep1_dzErr", event.selectedLeptons[0].dzErr)
-        self.out.fillBranch("lep1_ip3d", event.selectedLeptons[0].ip3d)
-        self.out.fillBranch("lep1_sip3d", event.selectedLeptons[0].sip3d)
+        # self.out.fillBranch("lep1_dxy", event.selectedLeptons[0].dxy)
+        # self.out.fillBranch("lep1_dxyErr", event.selectedLeptons[0].dxyErr)
+        # self.out.fillBranch("lep1_dz", event.selectedLeptons[0].dz)
+        # self.out.fillBranch("lep1_dzErr", event.selectedLeptons[0].dzErr)
+        # self.out.fillBranch("lep1_ip3d", event.selectedLeptons[0].ip3d)
+        # self.out.fillBranch("lep1_sip3d", event.selectedLeptons[0].sip3d)
 
         if self._channel in ('ZJets', 'TT2L'):
             self.out.fillBranch("lep2_pt", event.selectedLeptons[1].pt)
@@ -649,11 +678,7 @@ class FlavTreeProducer(Module, object):
             lep = event.selectedLeptons[0]
             self.out.fillBranch("dphi_lep_met", abs(deltaPhi(lep, event.met)))
             self.out.fillBranch("mt_lep_met", transverseMass(lep, event.met))
-            self.out.fillBranch("min_dr_lep_ak4", minValue([deltaR(lep, j) for j in event.ak4jets]))
-            self.out.fillBranch("min_deta_lep_ak4", minValue([abs(lep.eta - j.eta) for j in event.ak4jets]))
-            self.out.fillBranch("min_dphi_lep_ak4", minValue([abs(deltaPhi(lep, j)) for j in event.ak4jets]))
         elif self._channel in ('ZJets', 'TT2L'):
-            self.out.fillBranch("deltaR_ll", deltaR(event.selectedLeptons[0], event.selectedLeptons[1]))
             self.out.fillBranch("mt_ll_met", transverseMass(event.Vboson, event.met))
 
         # AK4 jets, cleaned vs leptons
@@ -735,18 +760,19 @@ class FlavTreeProducer(Module, object):
 
         self.out.fillBranch("n_mutag", sum(0 < x < 0.5 for x in ak4_mu_ptfrac))
 
-        # self.out.fillBranch("ak4_bdisc", ak4_bdisc)
-        # self.out.fillBranch("ak4_cvbdisc", ak4_cvbdisc)
-        # self.out.fillBranch("ak4_cvldisc", ak4_cvldisc)
-        if self.hasParticleNetAK4:
-            self.out.fillBranch("ak4_prob_b", ak4_prob_b)
-            self.out.fillBranch("ak4_prob_bb", ak4_prob_bb)
-            self.out.fillBranch("ak4_prob_c", ak4_prob_c)
-            self.out.fillBranch("ak4_prob_cc", ak4_prob_cc)
-            self.out.fillBranch("ak4_prob_uds", ak4_prob_uds)
-            self.out.fillBranch("ak4_prob_g", ak4_prob_g)
-            self.out.fillBranch("ak4_prob_pu", ak4_prob_pu)
-            self.out.fillBranch("ak4_prob_undef", ak4_prob_undef)
+        if self._opts['fillJetTaggingScores']:
+            # self.out.fillBranch("ak4_bdisc", ak4_bdisc)
+            # self.out.fillBranch("ak4_cvbdisc", ak4_cvbdisc)
+            # self.out.fillBranch("ak4_cvldisc", ak4_cvldisc)
+            if self.hasParticleNetAK4:
+                self.out.fillBranch("ak4_prob_b", ak4_prob_b)
+                self.out.fillBranch("ak4_prob_bb", ak4_prob_bb)
+                self.out.fillBranch("ak4_prob_c", ak4_prob_c)
+                self.out.fillBranch("ak4_prob_cc", ak4_prob_cc)
+                self.out.fillBranch("ak4_prob_uds", ak4_prob_uds)
+                self.out.fillBranch("ak4_prob_g", ak4_prob_g)
+                self.out.fillBranch("ak4_prob_pu", ak4_prob_pu)
+                self.out.fillBranch("ak4_prob_undef", ak4_prob_undef)
 
         self.out.fillBranch("ht", sum([j.pt for j in event.ak4jets]))
 
