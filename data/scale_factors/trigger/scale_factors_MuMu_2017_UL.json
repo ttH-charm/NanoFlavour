@@ -1,0 +1,171 @@
+{
+  "schema_version": 2,
+  "description": "scale factors for ttH(cc) analysis, MuMu channel, year 2017",
+  "corrections": [
+    {
+      "name": "trigger_SF_nom",
+      "description": "MuMu trigger scale factors for 2017 derived from ttH_MC MC and the data dataset (nom variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_nom",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          0.9821726679801941,
+          0.0,
+          0.0,
+          0.9867209196090698,
+          0.9956672191619873,
+          0.0,
+          0.9886862635612488,
+          0.9885281920433044,
+          0.9803655743598938
+        ],
+        "flow": "clamp"
+      }
+    },
+    {
+      "name": "trigger_SF_down",
+      "description": "MuMu trigger scale factors for 2017 derived from ttH_MC MC and the data dataset (down variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_down",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          0.970172667875886,
+          0.0,
+          0.0,
+          0.9777209199965,
+          0.9886672189459205,
+          0.0,
+          0.9806862631812692,
+          0.9825281919911504,
+          0.971365574747324
+        ],
+        "flow": "clamp"
+      }
+    },
+    {
+      "name": "trigger_SF_up",
+      "description": "MuMu trigger scale factors for 2017 derived from ttH_MC MC and the data dataset (up variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_up",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          0.9941726680845022,
+          0.0,
+          0.0,
+          0.9957209192216396,
+          1.0026672193780541,
+          0.0,
+          0.9966862639412284,
+          0.9945281920954585,
+          0.9893655739724636
+        ],
+        "flow": "clamp"
+      }
+    }
+  ]
+}

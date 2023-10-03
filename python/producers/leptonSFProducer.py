@@ -168,10 +168,14 @@ class TriggerSF():
                 'NUM_%s_DEN_CutBasedIdTight_and_PFIsoTight' %
                 ('IsoMu27' if year == 2017 else 'IsoMu24' if year == 2018 else 'IsoMu24_or_IsoTkMu24')]
             self.corr_el = correctionlib.CorrectionSet.from_file(os.path.expandvars(
-                f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/triggerSFs/{self.era}_EleTriggerSF_NanoAODv9_v0.json'))['EleTriggerSF']
+                f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/scale_factors/trigger/scale_factors_Ele_{self.era}.json'))
         elif channel == '2L':
-            self.corr = correctionlib.CorrectionSet.from_file(os.path.expandvars(
-                f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/triggerSFs/{self.era}_DiLeptonTriggerSF.json'))
+            self.corr_ElEl = correctionlib.CorrectionSet.from_file(os.path.expandvars(
+                f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/scale_factors/trigger/scale_factors_ElEl_{self.era}.json'))
+            self.corr_ElMu = correctionlib.CorrectionSet.from_file(os.path.expandvars(
+                f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/scale_factors/trigger/scale_factors_ElMu_{self.era}.json'))
+            self.corr_MuMu = correctionlib.CorrectionSet.from_file(os.path.expandvars(
+                f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/scale_factors/trigger/scale_factors_MuMu_{self.era}.json'))
 
     def get_trigger_sf(self, event):
         trigWgt = np.ones(3)
@@ -183,8 +187,8 @@ class TriggerSF():
                                     for syst in ('sf', 'systup', 'systdown')])
                 # debug(f'Muon pt:{lep.pt:.1f}, eta:{lep.eta:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
             elif abs(lep.pdgId) == 11:
-                trigWgt = np.array([self.corr_el.evaluate(syst, lep.pt, lep.etaSC)
-                                    for syst in ('central', 'up', 'down')])
+                trigWgt = np.array([self.corr_el[f'trigger_SF_{syst}'].evaluate(lep.pt, lep.etaSC)
+                                    for syst in ('nom', 'up', 'down')])
                 # debug(f'Electron pt:{lep.pt:.1f}, etaSC:{lep.etaSC:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
 
         elif self.channel == '2L':
@@ -197,14 +201,14 @@ class TriggerSF():
                     muons.append(lep)
 
             if len(electrons) == 2:
-                trigWgt = np.array([self.corr['ElElTriggerSF'].evaluate(syst, electrons[0].pt, electrons[1].pt)
-                                    for syst in ('central', 'up', 'down')])
+                trigWgt = np.array([self.corr_ElEl[f'trigger_SF_{syst}'].evaluate(electrons[0].pt, electrons[1].pt)
+                                    for syst in ('nom', 'up', 'down')])
             elif len(muons) == 2:
-                trigWgt = np.array([self.corr['MuMuTriggerSF'].evaluate(syst, muons[0].pt, muons[1].pt)
-                                    for syst in ('central', 'up', 'down')])
+                trigWgt = np.array([self.corr_MuMu[f'trigger_SF_{syst}'].evaluate(muons[0].pt, muons[1].pt)
+                                    for syst in ('nom', 'up', 'down')])
             elif len(electrons) == 1 and len(muons) == 1:
-                trigWgt = np.array([self.corr['MuElTriggerSF'].evaluate(syst, muons[0].pt, electrons[0].pt)
-                                    for syst in ('central', 'up', 'down')])
+                trigWgt = np.array([self.corr_ElMu[f'trigger_SF_{syst}'].evaluate(muons[0].pt, electrons[0].pt)
+                                    for syst in ('nom', 'up', 'down')])
 
             # debug(f'Leading (pdgId:{event.selectedLeptons[0].pdgId}, pt:{event.selectedLeptons[0].pt:.1f}, eta:{event.selectedLeptons[0].eta:.2f}), Sub-Leading (pdgId:{event.selectedLeptons[1].pdgId}, pt:{event.selectedLeptons[1].pt:.1f}, eta:{event.selectedLeptons[1].eta:.2f}), SF(trigger) = {trigWgt} (nom, up, down)')
 

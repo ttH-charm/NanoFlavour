@@ -1,0 +1,171 @@
+{
+  "schema_version": 2,
+  "description": "scale factors for ttH(cc) analysis, ElEl channel, year 2016",
+  "corrections": [
+    {
+      "name": "trigger_SF_nom",
+      "description": "ElEl trigger scale factors for 2016 derived from ttH_MC MC and the data dataset (nom variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_nom",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          0.980666995048523,
+          0.0,
+          0.0,
+          0.9802278280258179,
+          0.9929261803627014,
+          0.0,
+          0.9894562363624573,
+          0.9930275082588196,
+          0.9612570405006409
+        ],
+        "flow": "clamp"
+      }
+    },
+    {
+      "name": "trigger_SF_down",
+      "description": "ElEl trigger scale factors for 2016 derived from ttH_MC MC and the data dataset (down variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_down",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          0.9286669939756393,
+          0.0,
+          0.0,
+          0.9552278276532888,
+          0.9759261794388294,
+          0.0,
+          0.973456235602498,
+          0.9800275079905987,
+          0.9312570411711931
+        ],
+        "flow": "clamp"
+      }
+    },
+    {
+      "name": "trigger_SF_up",
+      "description": "ElEl trigger scale factors for 2016 derived from ttH_MC MC and the data dataset (up variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_up",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          1.0326669961214066,
+          0.0,
+          0.0,
+          1.005227828398347,
+          1.0099261812865734,
+          0.0,
+          1.0054562371224165,
+          1.0060275085270405,
+          0.9912570398300886
+        ],
+        "flow": "clamp"
+      }
+    }
+  ]
+}

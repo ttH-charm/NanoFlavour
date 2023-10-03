@@ -1,0 +1,171 @@
+{
+  "schema_version": 2,
+  "description": "scale factors for ttH(cc) analysis, ElMu channel, year 2016",
+  "corrections": [
+    {
+      "name": "trigger_SF_nom",
+      "description": "ElMu trigger scale factors for 2016 derived from ttH_MC MC and the data dataset (nom variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_nom",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          0.9775038957595825,
+          0.9928148984909058,
+          0.9994972348213196,
+          0.9839090704917908,
+          0.9920819401741028,
+          0.9961332082748413,
+          0.9787774682044983,
+          0.991628110408783,
+          0.9978719353675842
+        ],
+        "flow": "clamp"
+      }
+    },
+    {
+      "name": "trigger_SF_down",
+      "description": "ElMu trigger scale factors for 2016 derived from ttH_MC MC and the data dataset (down variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_down",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          0.9495038948953152,
+          0.9788148980587721,
+          0.99149723444134,
+          0.9599090702831745,
+          0.9800819400697947,
+          0.9881332078948617,
+          0.9567774683237076,
+          0.9796281103044748,
+          0.9898719349876046
+        ],
+        "flow": "clamp"
+      }
+    },
+    {
+      "name": "trigger_SF_up",
+      "description": "ElMu trigger scale factors for 2016 derived from ttH_MC MC and the data dataset (up variation)",
+      "version": 0,
+      "inputs": [
+        {
+          "name": "lep1_pt",
+          "type": "real",
+          "description": "lep1_pt"
+        },
+        {
+          "name": "lep2_pt",
+          "type": "real",
+          "description": "lep2_pt"
+        }
+      ],
+      "output": {
+        "name": "trigger_SF_up",
+        "type": "real",
+        "description": "event reweighting factor"
+      },
+      "data": {
+        "nodetype": "multibinning",
+        "inputs": [
+          "lep1_pt",
+          "lep2_pt"
+        ],
+        "edges": [
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ],
+          [
+            25.0,
+            50.0,
+            90.0,
+            200.0
+          ]
+        ],
+        "content": [
+          1.0055038966238499,
+          1.0068148989230394,
+          1.0074972352012992,
+          1.007909070700407,
+          1.004081940278411,
+          1.004133208654821,
+          1.000777468085289,
+          1.003628110513091,
+          1.0058719357475638
+        ],
+        "flow": "clamp"
+      }
+    }
+  ]
+}
