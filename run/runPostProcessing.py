@@ -11,6 +11,8 @@ import shutil
 import logging
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
+_cmssw_tarball_ready = False
+
 
 def get_chunks(l, n):
     """Yield successive n-sized chunks from l."""
@@ -219,6 +221,12 @@ def parse_sample_xsec(cfgfile):
 
 
 def tar_cmssw(tarball_suffix, batchMode=False):
+    global _cmssw_tarball_ready
+    if _cmssw_tarball_ready:
+        return
+    else:
+        _cmssw_tarball_ready = True
+
     cmsswdir = os.environ['CMSSW_BASE']
     cmsswtar = os.path.abspath(os.path.expandvars('$CMSSW_BASE/../CMSSW%s.tar.gz' % tarball_suffix))
     if os.path.exists(cmsswtar):
