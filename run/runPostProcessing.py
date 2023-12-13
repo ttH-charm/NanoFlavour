@@ -7,6 +7,7 @@ import sys
 import json
 import re
 import shutil
+import socket
 
 import logging
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
@@ -538,6 +539,12 @@ queue jobid from {jobids_file}
            request_memory=args.request_memory,
            condor_extras=args.condor_extras,
            )
+    if 'cern.ch' in socket.getfqdn():
+        # https://batchdocs.web.cern.ch/local/submit.html#os-selection-via-containers
+        os_version = 'el' + os.getenv('SCRAM_ARCH').split('_')[0][-1]
+        condordesc = condordesc.replace(
+            '(OpSys == "LINUX")', '( (OpSysAndVer =?= "AlmaLinux9") || (OpSysAndVer =?= "CentOS7") )')
+        condordesc = condordesc.replace('\nqueue', f'\nMY.WantOS = "{os_version}"\n\nqueue')
     condorfile = os.path.join(args.jobdir, 'submit.cmd')
     with open(condorfile, 'w') as f:
         f.write(condordesc)
@@ -801,9 +808,7 @@ def get_arg_parser():
 def run(args, configs=None):
     logging.info('Running w/ config: %s' % configs)
 
-    import socket
-    host = socket.getfqdn()
-    if 'cern.ch' in host:
+    if 'cern.ch' in socket.getfqdn():
         args.use_tmpdir = True
 
     if args.post:
