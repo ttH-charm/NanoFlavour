@@ -95,7 +95,7 @@ class MuonSFProducer(Module):
     def __init__(self, year, split_weights=False):
         self.year = year
         self.era = era_dict[self.year]
-        correction_file = f'/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/MUO/{self.era}/muon_Z.json.gz'
+        correction_file = f'/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/MUO/{self.era}/muon_Z_v2.json.gz'
         self.corr = correctionlib.CorrectionSet.from_file(correction_file)
         self.split_weights = split_weights
 
@@ -170,7 +170,7 @@ class TriggerSF():
         self.channel = channel
         if channel == '1L':
             self.corr_mu = correctionlib.CorrectionSet.from_file(
-                f'/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/MUO/{self.era}/muon_Z.json.gz')[
+                f'/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/MUO/{self.era}/muon_Z_v2.json.gz')[
                 'NUM_%s_DEN_CutBasedIdTight_and_PFIsoTight' %
                 ('IsoMu27' if year == 2017 else 'IsoMu24' if year == 2018 else 'IsoMu24_or_IsoTkMu24')]
             self.corr_el = correctionlib.CorrectionSet.from_file(os.path.expandvars(

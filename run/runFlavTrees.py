@@ -11,13 +11,16 @@ import logging
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 
 flav_cfgname = 'flavTree_cfg.json'
-default_config = {'channel': None,
-                  'usePuppiJets': True,
-                  'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': 'RegroupedV2_',
-                  'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
-                  'smearMET': False}
+default_config = {
+    'channel': None,
+    'usePuppiJets': True,
+    'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': 'RegroupedV2_',
+    'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
+    'smearMET': False,
+}
 
 jes_uncertainty_sources = {
+    '2015': ['Absolute', 'Absolute_2016', 'BBEC1', 'BBEC1_2016', 'EC2', 'EC2_2016', 'FlavorQCD', 'HF', 'HF_2016', 'RelativeBal', 'RelativeSample_2016'],
     '2016': ['Absolute', 'Absolute_2016', 'BBEC1', 'BBEC1_2016', 'EC2', 'EC2_2016', 'FlavorQCD', 'HF', 'HF_2016', 'RelativeBal', 'RelativeSample_2016'],
     '2017': ['Absolute', 'Absolute_2017', 'BBEC1', 'BBEC1_2017', 'EC2', 'EC2_2017', 'FlavorQCD', 'HF', 'HF_2017', 'RelativeBal', 'RelativeSample_2017'],
     '2018': ['Absolute', 'Absolute_2018', 'BBEC1', 'BBEC1_2018', 'EC2', 'EC2_2018', 'FlavorQCD', 'HF', 'HF_2018', 'RelativeBal', 'RelativeSample_2018'],
@@ -29,6 +32,8 @@ golden_json = {
     '2017': 'Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt',
     '2018': 'Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt',
 }
+
+ALL_POSSIBLE_SYSTS = ['nominal', 'pdf', 'jer', 'met', 'jes-sources', 'jes-total', 'hem']
 
 
 def _base_cut(year, channel):
@@ -76,6 +81,23 @@ def _process(args):
     args.cut = _base_cut(year, channel)
 
     args.imports = [('PhysicsTools.NanoFlavour.producers.flavTreeProducer', 'flavTreeFromConfig')]
+
+    systs_to_run = []
+    if args.type == 'mc':
+        if args.run_syst is None:
+            systs_to_run = ['nominal']
+        elif args.run_syst == 'full':
+            systs_to_run = ['pdf', 'jer', 'met', 'jes-sources', 'hem']
+        elif args.run_syst == 'lite':
+            systs_to_run = ['nominal', 'jer', 'met', 'jes-total', 'hem']
+        else:
+            systs_to_run = args.run_syst.split(',')
+    elif args.type == 'syst':
+        systs_to_run = ['nominal']
+    for syst in systs_to_run:
+        if syst not in ALL_POSSIBLE_SYSTS:
+            raise RuntimeError(f'Unrecognized systematics {syst}. Supported ones: {ALL_POSSIBLE_SYSTS}.')
+
     if args.type != 'data':
         args.imports.extend([
             ('PhysicsTools.NanoFlavour.producers.leptonSFProducer',
@@ -89,82 +111,93 @@ def _process(args):
                 ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),
             ])
 
-    # data, or just nominal MC
-    if args.type == 'data' or args.type == 'mc':
-        args.cut = _base_cut(year, channel)
+    if args.type == 'data':
+        logging.info('Start making data trees...')
+        opts = copy.deepcopy(args)
+        opts.extra_transfer = os.path.expandvars(
+            '$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/JSON/%s' % golden_json[year])
+        opts.json = golden_json[year]
         cfg = copy.deepcopy(default_config)
-        if args.type == 'data':
-            args.extra_transfer = os.path.expandvars(
-                '$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/JSON/%s' % golden_json[year])
-            args.json = golden_json[year]
-            cfg['jes'] = None
-            cfg['jer'] = None
-            cfg['jmr'] = None
-            cfg['met_unclustered'] = None
-        run(args, configs={flav_cfgname: cfg})
+        cfg['jes'] = None
+        cfg['jer'] = None
+        cfg['jmr'] = None
+        cfg['met_unclustered'] = None
+        run(opts, configs={flav_cfgname: cfg})
 
-    # MC for syst.
-    if args.type == 'mc' and args.run_syst:
+    else:
+        if 'nominal' in systs_to_run:
+            logging.info(f'Start making nominal {args.type} trees...')
+            cfg = copy.deepcopy(default_config)
+            opts = copy.deepcopy(args)
+            run(opts, configs={flav_cfgname: cfg})
 
-        # # nominal w/ PDF/Scale weights
-        # logging.info('Start making nominal trees with PDF/scale weights...')
-        # syst_name = 'LHEWeight'
-        # opts = copy.deepcopy(args)
-        # cfg = copy.deepcopy(default_config)
-        # opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
-        # opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
-        # opts.branchsel_out = 'keep_and_drop_output_LHEweights.txt'
-        # run(opts, configs={flav_cfgname: cfg})
-
-        # JES (Total) up/down
-        for variation in ['up', 'down']:
-            syst_name = 'jes_%s' % variation
-            logging.info('Start making %s trees...' % syst_name)
+        # w/ PDF/Scale weights
+        if 'pdf' in systs_to_run:
+            logging.info('Start making nominal trees with PDF/scale weights...')
+            syst_name = 'LHEWeight'
             opts = copy.deepcopy(args)
             cfg = copy.deepcopy(default_config)
-            cfg['jes'] = variation
             opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
             opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+            opts.branchsel_out = 'keep_and_drop_output_LHEweights.txt'
             run(opts, configs={flav_cfgname: cfg})
 
         # JER up/down
-        for variation in ['up', 'down']:
-            syst_name = 'jer_%s' % variation
-            logging.info('Start making %s trees...' % syst_name)
-            opts = copy.deepcopy(args)
-            cfg = copy.deepcopy(default_config)
-            cfg['jer'] = variation
-            opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
-            opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
-            run(opts, configs={flav_cfgname: cfg})
+        if 'jer' in systs_to_run:
+            for variation in ['up', 'down']:
+                syst_name = 'jer_%s' % variation
+                logging.info('Start making %s trees...' % syst_name)
+                opts = copy.deepcopy(args)
+                cfg = copy.deepcopy(default_config)
+                cfg['jer'] = variation
+                opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+                opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+                opts.branchsel_out = 'keep_and_drop_output_forSystTrees.txt'
+                run(opts, configs={flav_cfgname: cfg})
 
         # MET unclustEn up/down
-        for variation in ['up', 'down']:
-            syst_name = 'met_%s' % variation
-            logging.info('Start making %s trees...' % syst_name)
-            opts = copy.deepcopy(args)
-            cfg = copy.deepcopy(default_config)
-            cfg['met_unclustered'] = variation
-            opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
-            opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
-            run(opts, configs={flav_cfgname: cfg})
+        if 'met' in systs_to_run:
+            for variation in ['up', 'down']:
+                syst_name = 'met_%s' % variation
+                logging.info('Start making %s trees...' % syst_name)
+                opts = copy.deepcopy(args)
+                cfg = copy.deepcopy(default_config)
+                cfg['met_unclustered'] = variation
+                opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+                opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+                opts.branchsel_out = 'keep_and_drop_output_forSystTrees.txt'
+                run(opts, configs={flav_cfgname: cfg})
 
-        # # JES sources
-        # for source in jes_uncertainty_sources[year]:
-        #     for variation in ['up', 'down']:
-        #         syst_name = 'jes_%s_%s' % (source, variation)
-        #         logging.info('Start making %s trees...' % syst_name)
-        #         opts = copy.deepcopy(args)
-        #         cfg = copy.deepcopy(default_config)
-        #         cfg['jes_source'] = source
-        #         cfg['jes'] = variation
-        #         opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
-        #         opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
-        #         run(opts, configs={flav_cfgname: cfg})
+        # split JES sources
+        if 'jes-sources' in systs_to_run:
+            for source in jes_uncertainty_sources[year]:
+                for variation in ['up', 'down']:
+                    syst_name = 'jes_%s_%s' % (source, variation)
+                    logging.info('Start making %s trees...' % syst_name)
+                    opts = copy.deepcopy(args)
+                    cfg = copy.deepcopy(default_config)
+                    cfg['jes_source'] = source
+                    cfg['jes'] = variation
+                    opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+                    opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+                    opts.branchsel_out = 'keep_and_drop_output_forSystTrees.txt'
+                    run(opts, configs={flav_cfgname: cfg})
 
-    if args.type == 'mc' and (args.run_syst or args.run_hem_syst):
-        # HEM15/16 unc
-        if year == '2018':
+        # JES (Total) up/down
+        if 'jes-total' in systs_to_run:
+            for variation in ['up', 'down']:
+                syst_name = 'jes_%s' % variation
+                logging.info('Start making %s trees...' % syst_name)
+                opts = copy.deepcopy(args)
+                cfg = copy.deepcopy(default_config)
+                cfg['jes'] = variation
+                opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+                opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+                opts.branchsel_out = 'keep_and_drop_output_forSystTrees.txt'
+                run(opts, configs={flav_cfgname: cfg})
+
+        # HEM15/16 unc for 2018
+        if year == '2018' and 'hem' in systs_to_run:
             for variation in ['down']:
                 syst_name = 'HEMIssue_%s' % variation
                 logging.info('Start making %s trees...' % syst_name)
@@ -173,6 +206,7 @@ def _process(args):
                 cfg['applyHEMUnc'] = True
                 opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
                 opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+                opts.branchsel_out = 'keep_and_drop_output_forSystTrees.txt'
                 run(opts, configs={flav_cfgname: cfg})
 
 
@@ -227,13 +261,13 @@ def main():
                         help='Channel: ZJets, WJets, TT1L, TT2L'
                         )
 
-    parser.add_argument('--run-syst',
-                        action='store_true', default=False,
-                        help='Run all the systematic trees. Default: %(default)s'
-                        )
-    parser.add_argument('--run-hem-syst',
-                        action='store_true', default=False,
-                        help='Run HEM systematic trees. Default: %(default)s'
+    parser.add_argument('--run-syst', default=None,
+                        help='Run the systematic trees. The options include: '
+                        '`full`: include PDF weights and use individual JEC sources; '
+                        '`lite`: exclude PDF weights (but keep scale/PS weights) and use total JEC uncertainty; '
+                        'a comma separated list of the systematics to run, e.g., `jer,met`. '
+                        f'The available systematics include {ALL_POSSIBLE_SYSTS}. '
+                        'Default: %(default)s'
                         )
 
     parser.add_argument('--run-all',
