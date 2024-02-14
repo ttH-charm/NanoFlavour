@@ -50,16 +50,9 @@ class FlavTagSFProducer(Module):
         if split_stat_unc:
             flavors = ['flavB', 'flavC', 'flavL']
             tag_categories = ['C0', 'C1', 'C2', 'C3', 'C4', 'B0', 'B1', 'B2', 'B3', 'B4']
-            kin_categories = [
-                'eta_0p00toinf_pt_25to40',
-                'eta_0p00toinf_pt_40to60',
-                'eta_0p00toinf_pt_60to100',
-                'eta_0p00toinf_pt_100toinf',
-            ]
             for flav in flavors:
                 for tag in tag_categories:
-                    for kin in kin_categories:
-                        self.systematics.append(f'Stat_{flav}_{tag}_{kin}')
+                    self.systematics.append(f'Stat_{flav}_{tag}')
 
     def beginFile(self, inputFile, outputFile, inputTree, wrappedOutputTree):
         self.isMC = bool(inputTree.GetBranch('genWeight'))
@@ -94,25 +87,23 @@ class FlavTagSFProducer(Module):
         sf_central = self.corr.evaluate('central', hflav, wp, abseta, pt)
         wgts[self.name] = sf_central.prod()
 
-        # compute stat unc with toys
-        syst = 'Stat'
-        sf_stat_up = self.corr.evaluate(f'up_{syst}', hflav, wp, abseta, pt)
-        sf_stat_dn = self.corr.evaluate(f'down_{syst}', hflav, wp, abseta, pt)
-        err = (np.abs(sf_stat_up - sf_central) + np.abs(sf_central - sf_stat_dn)) / 2
-        # reset the seed to get reproducible results
-        np.random.seed(rndSeed(event, jets))
-        sf_toys = np.random.normal(sf_central[:, None], err[:, None], (n, n_toys))
-        wgt_toys = np.clip(sf_toys, 0.3, 3).prod(axis=0)
-        wgt_stat_dn, wgt_stat_up = np.percentile(wgt_toys, q=[16, 84])
-        wgts[f'{self.name}_{syst}_UP'] = wgt_stat_up
-        wgts[f'{self.name}_{syst}_DOWN'] = wgt_stat_dn
-
         # systematics
         for syst in self.systematics:
             if syst == 'Stat':
-                continue
-            wgts[f'{self.name}_{syst}_UP'] = self.corr.evaluate(f'up_{syst}', hflav, wp, abseta, pt).prod()
-            wgts[f'{self.name}_{syst}_DOWN'] = self.corr.evaluate(f'down_{syst}', hflav, wp, abseta, pt).prod()
+                # compute stat unc with toys
+                sf_stat_up = self.corr.evaluate(f'up_{syst}', hflav, wp, abseta, pt)
+                sf_stat_dn = self.corr.evaluate(f'down_{syst}', hflav, wp, abseta, pt)
+                err = (np.abs(sf_stat_up - sf_central) + np.abs(sf_central - sf_stat_dn)) / 2
+                # reset the seed to get reproducible results
+                np.random.seed(rndSeed(event, jets))
+                sf_toys = np.random.normal(sf_central[:, None], err[:, None], (n, n_toys))
+                wgt_toys = np.clip(sf_toys, 0.3, 3).prod(axis=0)
+                wgt_stat_dn, wgt_stat_up = np.percentile(wgt_toys, q=[16, 84])
+                wgts[f'{self.name}_{syst}_UP'] = wgt_stat_up
+                wgts[f'{self.name}_{syst}_DOWN'] = wgt_stat_dn
+            else:
+                wgts[f'{self.name}_{syst}_UP'] = self.corr.evaluate(f'up_{syst}', hflav, wp, abseta, pt).prod()
+                wgts[f'{self.name}_{syst}_DOWN'] = self.corr.evaluate(f'down_{syst}', hflav, wp, abseta, pt).prod()
 
         # debug('------')
         # debug(f'- flav: {hflav}\n- wp: {wp}\n- abseta: {abseta}\n- pt: {pt}\n- sf: {sf_central}')

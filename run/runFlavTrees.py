@@ -103,7 +103,7 @@ def _process(args):
             ('PhysicsTools.NanoFlavour.producers.leptonSFProducer',
              'electronSF_{year},muonSF_{year}'.format(year=year)),
             ('PhysicsTools.NanoFlavour.producers.topPtWeightProducer', 'topPtWeight'),
-            # ('PhysicsTools.NanoFlavour.producers.flavTagSFProducer', 'flavTagSF_' + year),
+            ('PhysicsTools.NanoFlavour.producers.flavTagSFProducer', 'flavTagSF_' + year),
             ('PhysicsTools.NanoFlavour.producers.puWeightProducer', 'puWeight_' + year),
         ])
         if not default_config['usePuppiJets']:
