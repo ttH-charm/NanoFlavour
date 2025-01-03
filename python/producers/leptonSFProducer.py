@@ -107,8 +107,8 @@ class MuonSFProducer(Module):
             key = 'NUM_TightID_DEN_genTracks'
         elif sf_type == 'Iso':
             key = f'NUM_{lep._wp_Iso}_DEN_TightIDandIPCut'
-        scale_factors = np.array([self.corr[key].evaluate(self.era, abs(lep.eta), lep.pt, syst)
-                                  for syst in ('sf', 'systup', 'systdown')])
+        scale_factors = np.array([self.corr[key].evaluate(abs(lep.eta), lep.pt, syst)
+                                  for syst in ('nominal', 'systup', 'systdown')])
         # debug(f'Muon pt:{lep.pt:.1f}, eta:{lep.eta:.2f}, wp:({lep._wp_ID}, {lep._wp_Iso}), SF({sf_type}) = {scale_factors} (nom, up, down)')
         return scale_factors
 
@@ -189,8 +189,8 @@ class TriggerSF():
         if self.channel == '1L':
             lep = event.selectedLeptons[0]
             if abs(lep.pdgId) == 13:
-                trigWgt = np.array([self.corr_mu.evaluate(self.era, abs(lep.eta), lep.pt, syst)
-                                    for syst in ('sf', 'systup', 'systdown')])
+                trigWgt = np.array([self.corr_mu.evaluate(abs(lep.eta), lep.pt, syst)
+                                    for syst in ('nominal', 'systup', 'systdown')])
                 # debug(f'Muon pt:{lep.pt:.1f}, eta:{lep.eta:.2f}, SF(trigger) = {trigWgt} (nom, up, down)')
             elif abs(lep.pdgId) == 11:
                 trigWgt = np.array([self.corr_el[f'trigger_SF_{syst}'].evaluate(lep.pt, lep.etaSC)

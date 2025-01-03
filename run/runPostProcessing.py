@@ -445,13 +445,13 @@ def submit(args, configs):
         os.makedirs(args.jobdir)
 
         # create outputdir
-        if os.path.exists(joboutputdir):
+        try:
+            os.makedirs(joboutputdir)
+        except FileExistsError:
             if not args.batch:
                 ans = input('outputdir %s already exists, continue? [yn] ' % joboutputdir)
                 if ans.lower()[0] == 'n':
                     sys.exit(1)
-        else:
-            os.makedirs(joboutputdir)
 
         # create config file for the scripts
         if configs is not None:

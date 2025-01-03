@@ -50,7 +50,8 @@ class FlavTreeProducer(Module, object):
         self._jmeSysts = {'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': '',
                           'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
                           'smearMET': False}
-        self._opts = {'muon_scale': 'nominal', 'fillJetTaggingScores': False, 'apply_tight_selection': True}
+        self._opts = {'muon_scale': 'nominal', 'fillJetTaggingScores': False,
+                      'apply_tight_selection': True, 'for_training': False}
         for k in kwargs:
             if k in self._jmeSysts:
                 self._jmeSysts[k] = kwargs[k]
@@ -467,8 +468,9 @@ class FlavTreeProducer(Module, object):
             # 3 <= njets <= 4
             if not (3 <= len(event.ak4jets) <= 4):
                 return False
-            if not (event.ak4jets[0].tag >= 50 or event.ak4jets[1].tag >= 50):
-                return False
+            if not self._opts['for_training']:
+                if not (event.ak4jets[0].tag >= 50 or event.ak4jets[1].tag >= 50):
+                    return False
             if self._opts['apply_tight_selection']:
                 if event.met.pt < 20:
                     return False
