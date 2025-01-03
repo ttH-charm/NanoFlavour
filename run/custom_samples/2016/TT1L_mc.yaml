@@ -22,6 +22,8 @@ diboson:
   - WWTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8
   - WWTo2L2Nu_TuneCP5_13TeV-powheg-pythia8
   - WZTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8
+  - WZToLNu2B_4f_TuneCP5_13TeV-amcatnloFXFX-madspin-pythia8
+  - WZTo1L3Nu_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8
   - WZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8
   - WZTo3LNu_TuneCP5_13TeV-amcatnloFXFX-pythia8
   - ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8
@@ -35,6 +37,3 @@ ttW:
 ttZ:
   - TTZToLLNuNu_M-10_TuneCP5_13TeV-amcatnlo-pythia8
   - TTZToQQ_TuneCP5_13TeV-amcatnlo-pythia8
-  # - tZq_ll_4f_ckm_NLO_TuneCP5_13TeV-amcatnlo-pythia8
-  # - tZq_nunu_4f_ckm_NLO_TuneCP5_PSweights_13TeV-mcatnlo-pythia8
-  # - tZq_Zhad_Wlept_4f_ckm_NLO_TuneCP5_PSweights_13TeV-amcatnlo-pythia8

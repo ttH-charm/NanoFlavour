@@ -12,12 +12,9 @@ singletop:
 z-fxfx:
   - DYJetsToLL_M-50_TuneCP5_13TeV-amcatnloFXFX-pythia8
 
-# diboson:
-#   - WWTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8
-#   - WWTo2L2Nu_TuneCP5_13TeV-powheg-pythia8
-#   - WZTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8
-#   - WZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8
-#   - WZTo3LNu_TuneCP5_13TeV-amcatnloFXFX-pythia8
-#   - ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8
-#   - ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8
-#   - ZZTo4L_TuneCP5_13TeV_powheg_pythia8
+diboson:
+  - WZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8
+  - WZTo3LNu_TuneCP5_13TeV-amcatnloFXFX-pythia8
+  - ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8
+  - ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8
+  - ZZTo4L_TuneCP5_13TeV_powheg_pythia8
