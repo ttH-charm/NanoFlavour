@@ -17,6 +17,7 @@ default_config = {
     'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': 'RegroupedV2_',
     'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'applyHEMUnc': False,
     'smearMET': False,
+    'fillInclusiveFlavTagSFs': False,
 }
 
 jes_uncertainty_sources = {
@@ -99,13 +100,13 @@ def _process(args):
             raise RuntimeError(f'Unrecognized systematics {syst}. Supported ones: {ALL_POSSIBLE_SYSTS}.')
 
     if args.type != 'data':
-        args.imports.extend([
-            ('PhysicsTools.NanoFlavour.producers.leptonSFProducer',
-             'electronSF_{year},muonSF_{year}'.format(year=year)),
-            ('PhysicsTools.NanoFlavour.producers.topPtWeightProducer', 'topPtWeight'),
-            ('PhysicsTools.NanoFlavour.producers.flavTagSFProducer', 'flavTagSF_' + year),
-            ('PhysicsTools.NanoFlavour.producers.puWeightProducer', 'puWeight_' + year),
-        ])
+        args.imports.extend(
+            [('PhysicsTools.NanoFlavour.producers.leptonSFProducer', 'electronSF_{year},muonSF_{year}'.format(
+                year=year)),
+             ('PhysicsTools.NanoFlavour.producers.topPtWeightProducer', 'topPtWeight'),
+             ('PhysicsTools.NanoFlavour.producers.flavTagSFProducer',
+              'flavTagSF_' + ('Run2' if default_config['fillInclusiveFlavTagSFs'] else year)),
+             ('PhysicsTools.NanoFlavour.producers.puWeightProducer', 'puWeight_' + year),])
         if not default_config['usePuppiJets']:
             args.imports.extend([
                 ('PhysicsTools.NanoFlavour.producers.puJetIdSFProducer', 'puJetIdSF_' + year),

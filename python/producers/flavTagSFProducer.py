@@ -22,7 +22,7 @@ def rndSeed(event, jets, extra=0):
 class FlavTagSFProducer(Module):
 
     def __init__(self, year, weight_name='flavTagWeight', split_stat_unc=True):
-        era = {2015: '2016preVFP_UL', 2016: '2016postVFP_UL', 2017: '2017_UL', 2018: '2018_UL'}[year]
+        era = {2015: '2016preVFP_UL', 2016: '2016postVFP_UL', 2017: '2017_UL', 2018: '2018_UL', 'Run2': 'Run2_UL'}[year]
         correction_file = os.path.expandvars(
             f'$CMSSW_BASE/src/PhysicsTools/NanoFlavour/data/flavTagSF/flavTaggingSF_{era}.json.gz')
         self.corr = correctionlib.CorrectionSet.from_file(correction_file)['particleNetAK4_shape']
@@ -148,3 +148,7 @@ def flavTagSF_2017():
 
 def flavTagSF_2018():
     return FlavTagSFProducer(year=2018)
+
+
+def flavTagSF_Run2():
+    return FlavTagSFProducer(year='Run2')
